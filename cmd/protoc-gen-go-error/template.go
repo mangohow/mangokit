@@ -17,7 +17,6 @@ type ErrorDesc struct {
 	EnumName   string // 枚举名称
 }
 
-
 type EnumErrors struct {
 	Errors []*ErrorDesc
 }

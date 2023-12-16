@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-
 )
 
 var onlyOneSignalHandler = make(chan struct{})

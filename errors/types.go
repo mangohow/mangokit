@@ -42,7 +42,6 @@ func InternalServerCause(code int32, reason, message string, err error) Error {
 	return FromError(code, http.StatusInternalServerError, reason, message, err)
 }
 
-
 func ServiceUnavailable(code int32, reason, message string) Error {
 	return New(code, http.StatusServiceUnavailable, reason, message)
 }
@@ -50,4 +49,3 @@ func ServiceUnavailable(code int32, reason, message string) Error {
 func ServiceUnavailableCause(code int32, reason, message string, err error) Error {
 	return FromError(code, http.StatusServiceUnavailable, reason, message, err)
 }
-

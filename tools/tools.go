@@ -10,4 +10,3 @@ func GinCtxFromContext(ctx context.Context) *gin.Context {
 	c := ctx.Value("gin-ctx")
 	return c.(*gin.Context)
 }
-

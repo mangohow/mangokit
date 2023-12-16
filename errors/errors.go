@@ -6,10 +6,10 @@ import (
 )
 
 const (
-	UnknownCode = -1
-	UnknownReason = "UnknownError"
+	UnknownCode    = -1
+	UnknownReason  = "UnknownError"
 	UnknownMessage = "unknown error"
-	DefaultStatus = http.StatusInternalServerError
+	DefaultStatus  = http.StatusInternalServerError
 )
 
 type Error interface {
@@ -23,11 +23,11 @@ type Error interface {
 }
 
 type ErrorImpl struct {
-	cause    error
-	status   int32
-	Code_    int32  `json:"code"`
-	Reason_  string `json:"reason"`
-	Message_ string `json:"message"`
+	cause     error
+	status    int32
+	Code_     int32             `json:"code"`
+	Reason_   string            `json:"reason"`
+	Message_  string            `json:"message"`
 	Metadata_ map[string]string `json:"metadata"`
 }
 
@@ -80,7 +80,7 @@ func Newf(code, status int32, reason, format string, args ...interface{}) Error 
 
 func FromError(code, status int32, reason, message string, err error) Error {
 	return &ErrorImpl{
-		cause: err,
+		cause:    err,
 		status:   status,
 		Code_:    code,
 		Reason_:  reason,
@@ -97,4 +97,3 @@ func IsError(err error) bool {
 
 	return ok
 }
-
