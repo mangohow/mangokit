@@ -19,7 +19,7 @@ type {{.ServiceName}}HTTPService interface {
 {{- end}}
 }
 
-func Register{{.ServiceName}}HTTPService(server *httpwrapper.Server, svc GreeterHTTPService) {
+func Register{{.ServiceName}}HTTPService(server *httpwrapper.Server, svc {{.ServiceName}}HTTPService) {
 	{{- range .Methods}}
 	server.{{.HttpMethod}}("{{.Path}}", _{{.ServiceName}}_{{.Name}}_HTTP_Handler(svc))
 	{{- end}}

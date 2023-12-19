@@ -3,13 +3,14 @@ package projectcmd
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/fatih/color"
 )
 
 type ProjectGenerator struct {
@@ -38,9 +39,9 @@ func (p *ProjectGenerator) Generate(ctx context.Context) error {
 		return err
 	}
 
-	fmt.Printf("create project success!\n")
-	fmt.Printf("next step:\n")
-	fmt.Printf("cd %s && go mod tidy \n", p.DirName)
+	color.Green("create project success!\n")
+	color.Cyan("next step:\n")
+	color.Cyan("cd %s && go mod tidy \n", p.DirName)
 
 	return nil
 }
@@ -54,8 +55,9 @@ func (p *ProjectGenerator) CloneRepo(ctx context.Context) error {
 		cmd = exec.CommandContext(context.Background(), "git", "clone", "-b", p.Branch, p.RepoUrl)
 	}
 
-	if err := cmd.Run(); err != nil {
-		fmt.Printf("clone repo failed, %v\n", err)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		color.Red(string(output))
+		color.Red("clone repo failed, %v\n", err)
 		return err
 	}
 
@@ -64,7 +66,7 @@ func (p *ProjectGenerator) CloneRepo(ctx context.Context) error {
 
 	// 修改目录名
 	if err := os.Rename(oldDirName, p.DirName); err != nil {
-		fmt.Printf("modify dir name failed, %v\n", err)
+		color.Red("modify dir name failed, %v\n", err)
 		os.RemoveAll(oldDirName)
 		return err
 	}
@@ -76,7 +78,7 @@ func (p *ProjectGenerator) ModifyFiles() error {
 	// 1.删除.git文件夹
 	gitDir := filepath.Join(p.BaseDir, ".git")
 	if err := os.RemoveAll(gitDir); err != nil {
-		fmt.Printf("remove .git failed, %v\n", err)
+		color.Red("remove .git failed, %v\n", err)
 		return err
 	}
 
@@ -88,7 +90,7 @@ func (p *ProjectGenerator) ModifyFiles() error {
 
 	// 3. 删除go.mod
 	if err := os.Remove(filepath.Join(p.BaseDir, "go.mod")); err != nil {
-		fmt.Printf("remove go.mod failed, %v\n", err)
+		color.Red("remove go.mod failed, %v\n", err)
 		return err
 	}
 
@@ -105,7 +107,7 @@ func (p *ProjectGenerator) GetGoModName() (string, error) {
 	goModPath := filepath.Join(p.BaseDir, "go.mod")
 	content, err := os.ReadFile(goModPath)
 	if err != nil {
-		fmt.Printf("read go.mod failed, %v\n", err)
+		color.Red("read go.mod failed, %v\n", err)
 		return "", err
 	}
 
@@ -132,7 +134,7 @@ func (p *ProjectGenerator) ModifyGoImports(oldModule string) error {
 		return nil
 	})
 	if err != nil {
-		fmt.Printf("walk dir failed, %v\n", err)
+		color.Red("walk dir failed, %v\n", err)
 		return err
 	}
 
@@ -176,7 +178,7 @@ loop:
 	for {
 		select {
 		case err = <-errCh:
-			fmt.Printf("modify go imports error, %v\n", err)
+			color.Red("modify go imports error, %v\n", err)
 			break loop
 		case <-counter:
 			count++
@@ -211,11 +213,11 @@ func (p *ProjectGenerator) GoModInit() error {
 	cmd := exec.Command("go", "mod", "init", p.ProjectName)
 	// 进入base dir
 	if err := os.Chdir(p.BaseDir); err != nil {
-		fmt.Printf("change dir failed, %v\n", err)
+		color.Red("change dir failed, %v\n", err)
 		return err
 	}
 	if err := cmd.Run(); err != nil {
-		fmt.Printf("go mod init failed, %v\n", err)
+		color.Red("go mod init failed, %v\n", err)
 		return err
 	}
 	os.Chdir("..")
@@ -227,11 +229,11 @@ func (p *ProjectGenerator) GitInit() error {
 	cmd := exec.Command("git", "init")
 	// 进入base dir
 	if err := os.Chdir(p.BaseDir); err != nil {
-		fmt.Printf("change dir failed, %v\n", err)
+		color.Red("change dir failed, %v\n", err)
 		return err
 	}
 	if err := cmd.Run(); err != nil {
-		fmt.Printf("git init failed, %v\n", err)
+		color.Red("git init failed, %v\n", err)
 		return err
 	}
 	os.Chdir("..")

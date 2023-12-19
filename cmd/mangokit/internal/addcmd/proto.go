@@ -3,14 +3,17 @@ package addcmd
 import (
 	"bytes"
 	_ "embed"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
+	"unicode"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var CmdAddApi = &cobra.Command{
@@ -100,18 +103,18 @@ func GenerateProtoFile(dir, name string, content string) error {
 	}
 	info := &TemplateInfo{
 		Package: pkg,
-		Name:    strings.TrimSuffix(name, filepath.Ext(name)), // 去掉文件后缀
+		Name:    case2Camel(strings.TrimSuffix(name, filepath.Ext(name))), // 去掉文件后缀
 	}
 	if filepath.IsAbs(dir) {
 		wd, err := os.Getwd()
 		if err != nil {
-			fmt.Printf("failed to get current working dir, %v\n", err)
+			color.Red("failed to get current working dir, %v\n", err)
 			return err
 		}
 
 		rel, err := filepath.Rel(wd, dir)
 		if err != nil {
-			fmt.Printf("failed to get relative path, %v\n", err)
+			color.Red("failed to get relative path, %v\n", err)
 			return err
 		}
 		info.Package = rel
@@ -122,11 +125,50 @@ func GenerateProtoFile(dir, name string, content string) error {
 	// 在windows下是\\，但是在proto文件中都为/
 	info.Package = strings.ReplaceAll(info.Package, "\\", "/")
 
+	// 如果目录不存在，创建目录
+	if _, err := os.Stat(dir); err != nil || os.IsNotExist(err){
+		if err = os.MkdirAll(dir, 0666); err != nil {
+			color.Red("create directory %s failed, %v", dir, err)
+			return err
+		}
+	}
+
 	cont := info.execute(content)
 	if err := os.WriteFile(path, []byte(cont), 0666); err != nil {
-		fmt.Printf("write file error, file: %s, reason: %v\n", name, err)
+		color.Red("write file error, file: %s, reason: %v\n", name, err)
 		return err
 	}
 
+	color.Green("%s added!", path)
+
 	return nil
+}
+
+var enCases = cases.Title(language.AmericanEnglish, cases.NoLower)
+
+func case2Camel(name string) string {
+	if !strings.Contains(name, "_") {
+		if name == strings.ToUpper(name) {
+			name = strings.ToLower(name)
+		}
+		return enCases.String(name)
+	}
+	strs := strings.Split(name, "_")
+	words := make([]string, 0, len(strs))
+	for _, w := range strs {
+		hasLower := false
+		for _, r := range w {
+			if unicode.IsLower(r) {
+				hasLower = true
+				break
+			}
+		}
+		if !hasLower {
+			w = strings.ToLower(w)
+		}
+		w = enCases.String(w)
+		words = append(words, w)
+	}
+
+	return strings.Join(words, "")
 }

@@ -10,7 +10,8 @@ var CmdGenerate = &cobra.Command{
 }
 
 func init() {
-	CmdGenerate.AddCommand(CmdGenApi)
+	CmdGenerate.AddCommand(CmdGenProto)
 	CmdGenerate.AddCommand(CmdGenWire)
 	CmdGenerate.AddCommand(CmdGenOpenApi)
+	CmdGenerate.AddCommand(CmdGenAll)
 }

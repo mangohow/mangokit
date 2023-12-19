@@ -2,9 +2,9 @@ package addcmd
 
 import (
 	_ "embed"
-	"fmt"
 	"os"
 
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
 
@@ -15,14 +15,16 @@ var CmdAddDockerfile = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		_, err := os.Stat("Dockerfile")
 		if err == nil {
-			fmt.Printf("Dockerfile is already exist!\n")
+			color.Yellow("Dockerfile is already exist!\n")
 			return
 		}
 
 		if err = os.WriteFile("Dockerfile", []byte(dockerfileContent), 0666); err != nil {
-			fmt.Printf("generate Dockerfile error, %v\n", err)
+			color.Red("generate Dockerfile error, %v\n", err)
 			return
 		}
+
+		color.Green("Dockerfile added!")
 	},
 }
 

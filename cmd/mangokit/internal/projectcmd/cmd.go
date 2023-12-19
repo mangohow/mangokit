@@ -2,12 +2,12 @@ package projectcmd
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
 
@@ -47,7 +47,7 @@ var CmdProject = &cobra.Command{
 		// 获取工作目录
 		dir, err := os.Getwd()
 		if err != nil {
-			fmt.Println("get current work dir failed: ", err)
+			color.Red("get current work dir failed: %v", err)
 			return
 		}
 
@@ -62,7 +62,7 @@ var CmdProject = &cobra.Command{
 		ctx, cancel := context.WithTimeout(context.Background(), timeoutDuration)
 		defer cancel()
 		if err = project.Generate(ctx); err != nil {
-			fmt.Println("generate project failed")
+			color.Red("generate project failed")
 		}
 	},
 }

@@ -84,7 +84,7 @@ func genErrorsReason(gen *protogen.Plugin, file *protogen.File, g *protogen.Gene
 			CamelName:  case2Camel(string(value.Desc.Name())),
 			Name:       string(value.Desc.Name()),
 			HTTPStatus: status,
-			EnumName:   string(enum.Desc.Name()),
+			EnumName:   case2Camel(string(enum.Desc.Name())),
 		}
 
 		ees.Errors = append(ees.Errors, e)

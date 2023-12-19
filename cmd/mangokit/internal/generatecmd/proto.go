@@ -1,18 +1,18 @@
 package generatecmd
 
 import (
-	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
 
-var CmdGenApi = &cobra.Command{
-	Use:   "api",
+var CmdGenProto = &cobra.Command{
+	Use:   "proto",
 	Short: "Generate go files based on proto files",
 	Long:  "Generate go files based on proto files",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -21,7 +21,7 @@ var CmdGenApi = &cobra.Command{
 			dir = args[0]
 		}
 
-		GenerateApis(dir)
+		GenerateProtos(dir)
 	},
 }
 
@@ -30,12 +30,12 @@ var (
 )
 
 func init() {
-	CmdGenApi.Flags().StringSliceVarP(&protoPath, "proto_path", "p", protoPath, "specify proto_path")
+	CmdGenProto.Flags().StringSliceVarP(&protoPath, "proto_path", "p", protoPath, "specify proto_path")
 }
 
 //  protoc --proto_path=third_party --proto_path=api --go_out=. --go-gin_out=. --go-error_out=. api/errors/v1/proto/errors.proto api/helloworld/v1/proto/greeter.proto
 
-func GenerateApis(dir string) error {
+func GenerateProtos(dir string) error {
 	// 遍历目录, 获取所有proto文件
 	protos := make([]string, 0)
 	err := filepath.Walk(dir, func(path string, info fs.FileInfo, err error) error {
@@ -50,7 +50,7 @@ func GenerateApis(dir string) error {
 		return nil
 	})
 	if err != nil {
-		fmt.Printf("walk protos error, %v\n", err)
+		color.Red("walk protos error, %v\n", err)
 		return err
 	}
 
@@ -68,7 +68,7 @@ func GenerateApis(dir string) error {
 	cmd.Stdout = os.Stdout
 
 	if err = cmd.Run(); err != nil {
-		fmt.Printf("generate proto files error, %v\n", err)
+		color.Red("generate proto files error, %v\n", err)
 		return err
 	}
 

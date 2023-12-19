@@ -1,13 +1,13 @@
 package generatecmd
 
 import (
-	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
 
@@ -44,7 +44,7 @@ func GenerateOpenAPI(dir string) error {
 		return nil
 	})
 	if err != nil {
-		fmt.Printf("walk protos error, %v\n", err)
+		color.Red("walk protos error, %v\n", err)
 		return err
 	}
 
@@ -60,7 +60,7 @@ func GenerateOpenAPI(dir string) error {
 	cmd.Stdout = os.Stdout
 
 	if err = cmd.Run(); err != nil {
-		fmt.Printf("generate openapi error, %v\n", err)
+		color.Red("generate openapi error, %v\n", err)
 		return err
 	}
 

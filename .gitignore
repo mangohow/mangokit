@@ -1,1 +1,5 @@
 .idea
+
+cmd/mangokit/mangokit.exe
+cmd/protoc-gen-go-error/protoc-gen-go-error.exe
+cmd/protoc-gen-go-gin/protoc-gen-go-gin.exe

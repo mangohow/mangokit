@@ -2,9 +2,9 @@ package addcmd
 
 import (
 	_ "embed"
-	"fmt"
 	"os"
 
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
 
@@ -15,14 +15,16 @@ var CmdAddMakefile = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		_, err := os.Stat("makefile")
 		if err == nil {
-			fmt.Printf("makefile is already exist!\n")
+			color.Yellow("makefile is already exist!\n")
 			return
 		}
 
 		if err = os.WriteFile("makefile", []byte(makefileContent), 0666); err != nil {
-			fmt.Printf("generate makefile error, %v\n", err)
+			color.Red("generate makefile error, %v\n", err)
 			return
 		}
+
+		color.Green("makefile added!")
 	},
 }
 
