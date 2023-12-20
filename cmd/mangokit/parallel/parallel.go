@@ -28,7 +28,7 @@ func ParallelResult[T1, T2 any](ctx context.Context, parallel int, tasks []T1, r
 	go func() {
 		defer wg.Done()
 		for i := 0; i < len(tasks); i++ {
-			// 防止发生错误时，其它worker退出，导致taskCh被放满，
+			// 防止发生错误时，其它worker退出，导致taskCh被填满，
 			// 从而导致当前goroutine阻塞在taskCh上，造成死锁
 			select {
 			case <-c.Done():
@@ -50,10 +50,9 @@ func ParallelResult[T1, T2 any](ctx context.Context, parallel int, tasks []T1, r
 					return
 				// 从taskCh中获取任务
 				case task := <-taskCh:
-					err := taskFn(task)
 					// 如果发生错误，则投递到errCh中
-					if err != nil {
-						// 防止多个goroutine都阻塞在closeCh上
+					if err := taskFn(task); err != nil {
+						// 防止多个goroutine都阻塞在errCh上
 						select {
 						case errCh <- err:
 						default:
@@ -73,6 +72,7 @@ loop:
 		select {
 		// 用户退出信号
 		case <-ctx.Done():
+			err = ctx.Err()
 			break loop
 		// 记录任务完成数量，如果任务全部完成，则通知worker退出
 		case <-counter:
