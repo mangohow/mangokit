@@ -78,7 +78,7 @@ var (
 func init() {
 	CmdProject.Flags().StringVarP(&repoUrl, "repo-url", "r", repoUrl, "template repo")
 	CmdProject.Flags().StringVarP(&branch, "branch", "b", branch, "template repo branch")
-	CmdProject.Flags().StringVarP(&timeout, "timeout", "t", repoUrl, "template repo")
+	CmdProject.Flags().StringVarP(&timeout, "timeout", "t", timeout, "pull project timeout")
 
 	duration, err := time.ParseDuration(timeout)
 	if err == nil {
