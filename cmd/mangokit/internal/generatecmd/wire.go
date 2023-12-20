@@ -81,6 +81,7 @@ func GenerateWire()  error{
 	command := exec.Command("go", args...)
 	output, err := command.CombinedOutput()
 	if err != nil {
+		color.Red(string(output))
 		color.Red("go generate error, %v\n", err)
 		return err
 	}
