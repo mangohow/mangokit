@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package {{.Name}}.v1;
+package {{.FileName}}.v1;
 
 import "errors/errors.proto";
 

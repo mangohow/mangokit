@@ -78,6 +78,7 @@ var ProtoErrorContent string
 type TemplateInfo struct {
 	Package string
 	Name    string
+	FileName string
 }
 
 func (t *TemplateInfo) execute(content string) string {
@@ -101,9 +102,11 @@ func GenerateProtoFile(dir, name string, content string) error {
 	if strings.HasSuffix(pkg, "/proto") {
 		pkg = strings.TrimRight(pkg, "/proto")
 	}
+	filename := strings.TrimSuffix(name, filepath.Ext(name))  // 去掉文件后缀
 	info := &TemplateInfo{
 		Package: pkg,
-		Name:    case2Camel(strings.TrimSuffix(name, filepath.Ext(name))), // 去掉文件后缀
+		FileName: filename,
+		Name:    case2Camel(filename),
 	}
 	if filepath.IsAbs(dir) {
 		wd, err := os.Getwd()
