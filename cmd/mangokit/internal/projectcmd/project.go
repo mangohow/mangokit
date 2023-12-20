@@ -8,9 +8,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/fatih/color"
+	"github.com/mangohow/mangokit/cmd/mangokit/parallel"
 )
 
 type ProjectGenerator struct {
@@ -138,58 +138,18 @@ func (p *ProjectGenerator) ModifyGoImports(oldModule string) error {
 		return err
 	}
 
-	ch := make(chan string, 1024)
-	errCh := make(chan error, 1)
-	group := sync.WaitGroup{}
-	counter := make(chan struct{}, 1024)
-	ctx, cancel := context.WithCancel(context.Background())
-
 	// 修改go imports
 	oldMod := []byte(oldModule)
 	newMod := []byte(p.ProjectName)
-	for i := 0; i < 8; i++ {
-		group.Add(1)
-		go func() {
-			defer group.Done()
 
-			for {
-				select {
-				case file := <-ch:
-					if err := p.modifyGoImports(file, oldMod, newMod); err != nil {
-						errCh <- err
-						return
-					}
-					counter <- struct{}{}
-				case <-ctx.Done():
-					return
-				}
-			}
-
-		}()
+	// 启动多个goroutine来修改go文件中的import
+	err = parallel.Parallel(context.Background(), 8, goFiles, func(file string) error {
+		return p.modifyGoImports(file, oldMod, newMod)
+	})
+	if err != nil {
+		color.Red("modify go imports error, %v\n", err)
+		return err
 	}
-
-	for i := 0; i < len(goFiles); i++ {
-		ch <- goFiles[i]
-	}
-
-	// 等待任务完成
-	count := 0
-loop:
-	for {
-		select {
-		case err = <-errCh:
-			color.Red("modify go imports error, %v\n", err)
-			break loop
-		case <-counter:
-			count++
-			if count == len(goFiles) {
-				break loop
-			}
-		}
-	}
-
-	cancel()
-	group.Wait()
 
 	return nil
 }
