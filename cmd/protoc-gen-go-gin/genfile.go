@@ -12,7 +12,6 @@ import (
 	"google.golang.org/protobuf/types/descriptorpb"
 )
 
-
 func generateFile(plugin *protogen.Plugin, file *protogen.File) *protogen.GeneratedFile {
 	if len(file.Services) == 0 || !hasHTTPRule(file.Services) {
 		return nil
@@ -128,11 +127,18 @@ func buildMethodDesc(g *protogen.GeneratedFile, m *protogen.Method) *MethodDesc 
 		comment = "// " + m.GoName + strings.TrimPrefix(strings.TrimSuffix(comment, "\n"), "//")
 	}
 
+	if debug {
+		fmt.Fprintf(output, "method: %v input: %d output: %d\n",
+			m.GoName, m.Desc.Input().Fields().Len(), m.Desc.Output().Fields().Len())
+	}
+
 	return &MethodDesc{
 		Name:        m.GoName,
 		Request:     g.QualifiedGoIdent(m.Input.GoIdent),
 		Reply:       g.QualifiedGoIdent(m.Output.GoIdent),
 		Comment:     comment,
+		InputFieldLen: m.Desc.Input().Fields().Len(),
+		OutputFieldLen: m.Desc.Output().Fields().Len(),
 	}
 }
 

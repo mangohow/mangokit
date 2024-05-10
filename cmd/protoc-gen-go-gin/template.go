@@ -22,6 +22,8 @@ type MethodDesc struct {
 	Reply string            // 响应参数名
 	ServiceName string      // 所属service名
 	Comment string          // 注释
+	InputFieldLen int       // 输入参数字段数量
+	OutputFieldLen int      // 输出参数字段数量
 
 	// http rule
 	Path string            // 请求路径
