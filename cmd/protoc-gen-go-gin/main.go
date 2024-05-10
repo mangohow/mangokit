@@ -14,7 +14,7 @@ var (
 )
 
 var (
-	debug = true
+	debug = false
 	output *os.File
 )
 
