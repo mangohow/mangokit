@@ -11,9 +11,10 @@ import (
 var TextTemplate string
 
 type ServiceDesc struct {
-	ServiceName string    // Greeter
+	ServiceName string
 	Comment string
 	Methods []*MethodDesc
+	ImportSerialize bool
 }
 
 type MethodDesc struct {

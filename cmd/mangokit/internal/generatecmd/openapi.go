@@ -1,6 +1,7 @@
 package generatecmd
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -16,10 +17,11 @@ var CmdGenOpenApi = &cobra.Command{
 	Short: "Generate openapi files",
 	Long:  "Generate openapi files",
 	Run: func(cmd *cobra.Command, args []string) {
-		dir := "api"
-		if len(args) > 0 {
-			dir = args[0]
+		if len(args) == 0 {
+			fmt.Fprintf(os.Stderr, "missing file path you wang to generate")
+			os.Exit(1)
 		}
+		dir := args[0]
 
 		GenerateOpenAPI(dir)
 	},
@@ -33,6 +35,11 @@ func GenerateOpenAPI(dir string) error {
 	// 遍历目录, 获取所有proto文件
 	protos := make([]string, 0)
 	err := filepath.Walk(dir, func(path string, info fs.FileInfo, err error) error {
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "generate openapi error, dir: %s, file %s, error: %v\n", dir, path, err)
+			os.Exit(1)
+		}
+
 		if info.IsDir() {
 			return nil
 		}

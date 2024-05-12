@@ -40,6 +40,11 @@ func GenerateWire()  error{
 	goFiles := make([]string, 0)
 	// 获取所有go文件
 	err = filepath.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "generate wire error, file %s, error: %v\n", path, err)
+			os.Exit(1)
+		}
+
 		if d.IsDir() {
 			return nil
 		}

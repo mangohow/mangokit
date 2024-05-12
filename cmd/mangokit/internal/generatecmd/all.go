@@ -1,19 +1,24 @@
 package generatecmd
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
 
 var CmdGenAll = &cobra.Command{
 	Use:   "all",
+	Example: "mangokit generate proto api",
 	Short: "Generate proto, openapi and wire",
 	Long:  "Generate proto, openapi and wire",
 	Run: func(cmd *cobra.Command, args []string) {
-		dir := "api"
-		if len(args) > 0 {
-			dir = args[0]
+		if len(args) == 0 {
+			fmt.Fprintf(os.Stderr, "missing file path you wang to generate.")
+			os.Exit(1)
 		}
+		dir := args[0]
 
 		GenerateAll(dir)
 	},

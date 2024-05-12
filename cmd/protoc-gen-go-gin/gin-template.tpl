@@ -3,7 +3,9 @@ import (
 	"context"
 	"net/http"
 
+	{{if .ImportSerialize}}
 	"github.com/mangohow/mangokit/serialize"
+	{{- end}}
 	"github.com/mangohow/mangokit/transport/httpwrapper"
 )
 

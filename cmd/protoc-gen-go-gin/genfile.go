@@ -70,7 +70,11 @@ func genService(plugin *protogen.Plugin, file *protogen.File, g *protogen.Genera
 			continue
 		}
 		sd.Methods = append(sd.Methods, buildHTTPRule(g, service, method, rule))
-	}
+
+		if len(method.Output.Fields) > 0 {
+			sd.ImportSerialize = true
+		}
+ 	}
 
 	if len(sd.Methods) != 0 {
 		g.P(sd.execute())
