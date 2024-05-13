@@ -3,7 +3,6 @@ syntax = "proto3";
 package errors;
 
 option go_package = "github.com/mangohow/mangokit/errors;errors";
-option objc_class_prefix = "KratosErrors";
 
 import "google/protobuf/descriptor.proto";
 
@@ -13,4 +12,5 @@ extend google.protobuf.EnumOptions {
 
 extend google.protobuf.EnumValueOptions {
   int32 code = 1109;
+  string desc = 1110;
 }

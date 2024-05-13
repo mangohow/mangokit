@@ -66,6 +66,12 @@ func genErrorsReason(gen *protogen.Plugin, file *protogen.File, g *protogen.Gene
 
 	var ees EnumErrors
 	for _, value := range enum.Values {
+		d := proto.GetExtension(value.Desc.Options(), errors.E_Desc)
+		desc, _ := d.(string)
+		if desc != "" {
+			ees.GenDesc = true
+		}
+
 		status := code
 		eCode := proto.GetExtension(value.Desc.Options(), errors.E_Code)
 		if ok := eCode.(int32); ok != 0 {
@@ -93,6 +99,7 @@ func genErrorsReason(gen *protogen.Plugin, file *protogen.File, g *protogen.Gene
 			Name:       string(value.Desc.Name()),
 			HTTPStatus: status,
 			EnumName:   case2Camel(string(enum.Desc.Name())),
+			Desc: desc,
 		}
 
 		ees.Errors = append(ees.Errors, e)

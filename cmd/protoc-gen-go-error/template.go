@@ -15,10 +15,12 @@ type ErrorDesc struct {
 	Name       string // 名称
 	HTTPStatus int    // http响应码
 	EnumName   string // 枚举名称
+	Desc       string // 错误描述
 }
 
 type EnumErrors struct {
-	Errors []*ErrorDesc
+	Errors  []*ErrorDesc
+	GenDesc bool         // 是否生成Desc
 }
 
 func (e EnumErrors) execute() string {
