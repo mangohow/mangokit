@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package test;
+
+import "google/api/annotations.proto";
+import "mangokit/stag/stag.proto";
+
+option go_package = ".;test";
+
+message GreeterRequest {
+  string name = 1 [(stag.tags)="uri:name"];
+}
+
+message GreeterResponse {
+  string message = 1;
+}
+
+message Empty {
+
+}
+
+service Greeter {
+  rpc SayHello(GreeterRequest) returns (GreeterResponse) {
+    option (google.api.http) = {
+      get: "/hello/:name"
+    };
+  }
+
+  rpc SayHelloEmptyRequest(Empty) returns (GreeterResponse) {
+    option (google.api.http) = {
+      get: "/hello1"
+    };
+  }
+
+  rpc SayHelloEmptyResponse(GreeterRequest) returns (Empty) {
+    option (google.api.http) = {
+      get: "/hello2/:name"
+    };
+  }
+
+  rpc SayHelloEmpty(Empty) returns (Empty) {
+    option (google.api.http) = {
+      get: "/hello3"
+    };
+  }
+}
+
+service EmptyGreeter {
+
+}

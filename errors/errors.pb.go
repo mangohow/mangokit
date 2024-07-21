@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.34.1-devel
 // 	protoc        v3.20.1
-// source: third_party/errors/errors.proto
+// source: third_party/mangokit/mangokit.proto
 
 package errors
 
@@ -25,25 +25,25 @@ var file_third_party_errors_errors_proto_extTypes = []protoimpl.ExtensionInfo{
 		ExtendedType:  (*descriptorpb.EnumOptions)(nil),
 		ExtensionType: (*int32)(nil),
 		Field:         1108,
-		Name:          "errors.default_code",
+		Name:          "mangokit.default_code",
 		Tag:           "varint,1108,opt,name=default_code",
-		Filename:      "third_party/errors/errors.proto",
+		Filename:      "third_party/mangokit/mangokit.proto",
 	},
 	{
 		ExtendedType:  (*descriptorpb.EnumValueOptions)(nil),
 		ExtensionType: (*int32)(nil),
 		Field:         1109,
-		Name:          "errors.code",
+		Name:          "mangokit.code",
 		Tag:           "varint,1109,opt,name=code",
-		Filename:      "third_party/errors/errors.proto",
+		Filename:      "third_party/mangokit/mangokit.proto",
 	},
 	{
 		ExtendedType:  (*descriptorpb.EnumValueOptions)(nil),
 		ExtensionType: (*string)(nil),
 		Field:         1110,
-		Name:          "errors.desc",
+		Name:          "mangokit.desc",
 		Tag:           "bytes,1110,opt,name=desc",
-		Filename:      "third_party/errors/errors.proto",
+		Filename:      "third_party/mangokit/mangokit.proto",
 	},
 }
 
@@ -91,9 +91,9 @@ var file_third_party_errors_errors_proto_goTypes = []interface{}{
 	(*descriptorpb.EnumValueOptions)(nil), // 1: google.protobuf.EnumValueOptions
 }
 var file_third_party_errors_errors_proto_depIdxs = []int32{
-	0, // 0: errors.default_code:extendee -> google.protobuf.EnumOptions
-	1, // 1: errors.code:extendee -> google.protobuf.EnumValueOptions
-	1, // 2: errors.desc:extendee -> google.protobuf.EnumValueOptions
+	0, // 0: mangokit.default_code:extendee -> google.protobuf.EnumOptions
+	1, // 1: mangokit.code:extendee -> google.protobuf.EnumValueOptions
+	1, // 2: mangokit.desc:extendee -> google.protobuf.EnumValueOptions
 	3, // [3:3] is the sub-list for method output_type
 	3, // [3:3] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name

@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package stag;
+
+import "google/protobuf/descriptor.proto";
+
+option go_package = "google.golang.org/protobuf/extend/stag;stag";
+
+enum NamingCase {
+  CamelCase = 0;
+  PascalCase = 1;
+  SnakeCase = 2;
+}
+
+message Tag {
+  NamingCase case = 1;
+  string name = 2;
+  bool omitempty = 3;
+}
+
+// 文件级别的tag
+// 该文件下所有Message都会添加相应tag
+extend google.protobuf.FileOptions {
+  repeated Tag struct_tags = 50000;
+}
+
+// Message级别的tag
+// 该Message下的所有字段都会添加相应tag
+extend google.protobuf.MessageOptions {
+  repeated Tag field_tags = 50001;
+}
+
+// 字段级别的tag
+extend google.protobuf.FieldOptions {
+  repeated string tags = 50002;
+}

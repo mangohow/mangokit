@@ -19,12 +19,15 @@ cd mangokit && make install
 ```
 other tools:
 ```shell
-# install proto-gen-go
-go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+# install proto-gen-gogo
+git clone https://github.com/mangohow/protobuf.git
+cd protobuf && make install
 
 # install wire
 go install github.com/google/wire/cmd/wire@latest
 
+# install openapi
+go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
 # make sure you have protoc
 ```
     

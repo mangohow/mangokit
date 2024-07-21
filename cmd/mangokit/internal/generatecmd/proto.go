@@ -35,7 +35,7 @@ func init() {
 	CmdGenProto.Flags().StringSliceVarP(&protoPath, "proto_path", "p", protoPath, "specify proto_path")
 }
 
-//  protoc --proto_path=third_party --proto_path=api --go_out=. --go-gin_out=. --go-error_out=. api/errors/v1/proto/errors.proto api/helloworld/v1/proto/greeter.proto
+//  protoc --proto_path=third_party --proto_path=api --gogo_out=. --go-gin_out=. --go-error_out=. api/mangokit/v1/proto/mangokit.proto api/helloworld/v1/proto/greeter.proto
 
 func GenerateProtos(dir string) error {
 	// 遍历目录, 获取所有proto文件
@@ -65,7 +65,7 @@ func GenerateProtos(dir string) error {
 	for _, s := range protoPath {
 		args = append(args, "--proto_path="+s)
 	}
-	args = append(args, "--go_out=.")
+	args = append(args, "--gogo_out=.")
 	args = append(args, "--go-gin_out=.")
 	args = append(args, "--go-error_out=.")
 	args = append(args, protos...)

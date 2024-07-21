@@ -13,7 +13,7 @@ var showVersion = flag.Bool("version", false, "print the version and exit")
 func main() {
 	flag.Parse()
 	if *showVersion {
-		fmt.Printf("protoc-gen-go-errors %v\n", version)
+		fmt.Printf("protoc-gen-go-mangokit %v\n", version)
 		return
 	}
 

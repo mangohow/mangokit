@@ -20,12 +20,12 @@ type ErrorDesc struct {
 
 type EnumErrors struct {
 	Errors  []*ErrorDesc
-	GenDesc bool         // 是否生成Desc
+	GenDesc bool // 是否生成Desc
 }
 
 func (e EnumErrors) execute() string {
 	buf := new(bytes.Buffer)
-	tmpl, err := template.New("errors").Parse(ErrorTemplate)
+	tmpl, err := template.New("mangokit").Parse(ErrorTemplate)
 	if err != nil {
 		panic(err)
 	}

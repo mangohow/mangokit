@@ -47,7 +47,7 @@ func generateFileContent(gen *protogen.Plugin, file *protogen.File, g *protogen.
 			index++
 		}
 	}
-	// If all enums do not contain 'errors.code', the current file is skipped
+	// If all enums do not contain 'mangokit.code', the current file is skipped
 	if index == 0 {
 		g.Skip()
 	}
@@ -77,7 +77,7 @@ func genErrorsReason(gen *protogen.Plugin, file *protogen.File, g *protogen.Gene
 		if ok := eCode.(int32); ok != 0 {
 			status = int(ok)
 		}
-		// If the current enumeration does not contain 'errors.code'
+		// If the current enumeration does not contain 'mangokit.code'
 		// or the code value exceeds the range, the current enum will be skipped
 		if status > 600 || status < 0 {
 			panic(fmt.Sprintf("Enum '%s' range must be greater than 0 and less than or equal to 600", string(value.Desc.Name())))
@@ -99,7 +99,7 @@ func genErrorsReason(gen *protogen.Plugin, file *protogen.File, g *protogen.Gene
 			Name:       string(value.Desc.Name()),
 			HTTPStatus: status,
 			EnumName:   case2Camel(string(enum.Desc.Name())),
-			Desc: desc,
+			Desc:       desc,
 		}
 
 		ees.Errors = append(ees.Errors, e)

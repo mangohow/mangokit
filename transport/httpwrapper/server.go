@@ -3,6 +3,7 @@ package httpwrapper
 import (
 	"context"
 	"net/http"
+	"reflect"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mangohow/mangokit/errors"
@@ -17,10 +18,13 @@ type Server struct {
 
 	log       *logrus.Logger
 	errorFunc EncodeErrorFunc
-	fnt       DecodeFieldNameType
+
+	middlewares []Middleware
+
+	ctx context.Context
 }
 
-type HandlerFunc func(ctx *Context) error
+type HandlerFunc func(c *gin.Context) error
 
 // EncodeErrorFunc 错误处理函数
 type EncodeErrorFunc func(ctx *gin.Context, err error, log *logrus.Logger)
@@ -69,9 +73,9 @@ func WithLogger(log *logrus.Logger) Option {
 	}
 }
 
-func WithDecodeFieldNameType(t DecodeFieldNameType) Option {
+func WithContext(ctx context.Context) Option {
 	return func(s *Server) {
-		s.fnt = t
+		s.ctx = ctx
 	}
 }
 
@@ -97,6 +101,10 @@ func New(opts ...Option) *Server {
 		s.log = logrus.StandardLogger()
 	}
 
+	if s.ctx == nil {
+		s.ctx = context.Background()
+	}
+
 	if s.addr == "" {
 		s.addr = ":8000"
 	}
@@ -117,49 +125,61 @@ func (s *Server) GinEngine() *gin.Engine {
 	return s.router
 }
 
-func (s *Server) handlersConvert(handlers ...HandlerFunc) (hs []gin.HandlerFunc) {
-	hs = make([]gin.HandlerFunc, 0, len(handlers))
-	for i := 0; i < len(handlers); i++ {
-		handler := handlers[i]
-		hs = append(hs, func(ctx *gin.Context) {
-			c := ctxPool.Get().(*Context)
-			c.Context = ctx
-			c.fnt = s.fnt
-			err := handler(c)
-			if err != nil {
-				s.errorFunc(ctx, err, s.log)
-			}
-
-			c.clear()
-			putPool(c)
-		})
+func (s *Server) RegisterService(sd *ServiceDesc, srv interface{}) {
+	if srv != nil {
+		ht := reflect.TypeOf(sd.HandlerType).Elem()
+		st := reflect.TypeOf(srv)
+		if !st.Implements(ht) {
+			s.log.Fatalf("handler type %v not implement %v", st, ht)
+		}
 	}
 
-	return
+	s.register(sd, srv)
 }
 
-func (s *Server) Handle(method, relativePath string, handlers ...HandlerFunc) {
-	s.router.Handle(method, relativePath, s.handlersConvert(handlers...)...)
+func (s *Server) register(sd *ServiceDesc, srv interface{}) {
+	for _, d := range sd.Methods {
+		handler := d.Handler
+		s.handle(d.Method, d.Path, handler(srv, chainHandler(srv, s.middlewares)))
+	}
 }
 
-func (s *Server) GET(relativePath string, handlers ...HandlerFunc) {
-	s.Handle(http.MethodGet, relativePath, handlers...)
+func chainHandler(srv interface{}, middlewares []Middleware) Middleware {
+	if len(middlewares) == 0 {
+		return nil
+	}
+
+	return func(ctx context.Context, req interface{}, handler NextHandler) error {
+		return middlewares[0](ctx, req, getChainMiddleware(middlewares, 0, handler))
+	}
 }
 
-func (s *Server) POST(relativePath string, handlers ...HandlerFunc) {
-	s.Handle(http.MethodPost, relativePath, handlers...)
+func getChainMiddleware(middlewares []Middleware, cur int, handler NextHandler) NextHandler {
+	if cur >= len(middlewares)-1 {
+		return handler
+	}
+
+	return func(ctx context.Context, req interface{}) error {
+		return middlewares[cur+1](ctx, req, getChainMiddleware(middlewares, cur+1, handler))
+	}
 }
 
-func (s *Server) DELETE(relativePath string, handlers ...HandlerFunc) {
-	s.Handle(http.MethodDelete, relativePath, handlers...)
+func (s *Server) handle(method, relativePath string, handler Middleware) {
+	s.router.Handle(method, relativePath, s.handlerConvert(handler))
 }
 
-func (s *Server) PATCH(relativePath string, handlers ...HandlerFunc) {
-	s.Handle(http.MethodPatch, relativePath, handlers...)
+func (s *Server) handlerConvert(handler Middleware) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := context.WithValue(s.ctx, "gin-ctx", c)
+		err := handler(ctx, nil, nil)
+		if err != nil && s.errorFunc != nil {
+			s.errorFunc(c, err, s.log)
+		}
+	}
 }
 
-func (s *Server) PUT(relativePath string, handlers ...HandlerFunc) {
-	s.Handle(http.MethodPut, relativePath, handlers...)
+func (s *Server) Middleware(middleware ...Middleware) {
+	s.middlewares = append(s.middlewares, middleware...)
 }
 
 func (s *Server) Start() error {

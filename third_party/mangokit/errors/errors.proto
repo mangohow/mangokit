@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package errors;
+package mangokit.errors;
 
-option go_package = "github.com/mangohow/mangokit/errors;errors";
+option go_package = "github.com/mangohow/mangokit/proto;mangokit";
 
 import "google/protobuf/descriptor.proto";
 

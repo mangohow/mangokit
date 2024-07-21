@@ -58,7 +58,7 @@ func genService(plugin *protogen.Plugin, file *protogen.File, g *protogen.Genera
 	// http service
 	sd := &ServiceDesc{
 		ServiceName: service.GoName,
-		Comment: comment,
+		Comment:     comment,
 	}
 
 	for _, method := range service.Methods {
@@ -74,7 +74,7 @@ func genService(plugin *protogen.Plugin, file *protogen.File, g *protogen.Genera
 		if len(method.Output.Fields) > 0 {
 			sd.ImportSerialize = true
 		}
- 	}
+	}
 
 	if len(sd.Methods) != 0 {
 		g.P(sd.execute())
@@ -83,8 +83,8 @@ func genService(plugin *protogen.Plugin, file *protogen.File, g *protogen.Genera
 
 func buildHTTPRule(g *protogen.GeneratedFile, service *protogen.Service, m *protogen.Method, rule *annotations.HttpRule) *MethodDesc {
 	var (
-		path         string
-		method       string
+		path   string
+		method string
 	)
 
 	// 获取请求方法和路径
@@ -118,7 +118,7 @@ func buildHTTPRule(g *protogen.GeneratedFile, service *protogen.Service, m *prot
 	}
 
 	md := buildMethodDesc(g, m)
-	md.HttpMethod = method
+	md.Method = method
 	md.Path = path
 	md.ServiceName = service.GoName
 
@@ -137,11 +137,11 @@ func buildMethodDesc(g *protogen.GeneratedFile, m *protogen.Method) *MethodDesc 
 	}
 
 	return &MethodDesc{
-		Name:        m.GoName,
-		Request:     g.QualifiedGoIdent(m.Input.GoIdent),
-		Reply:       g.QualifiedGoIdent(m.Output.GoIdent),
-		Comment:     comment,
-		InputFieldLen: m.Desc.Input().Fields().Len(),
+		Name:           m.GoName,
+		Request:        g.QualifiedGoIdent(m.Input.GoIdent),
+		Reply:          g.QualifiedGoIdent(m.Output.GoIdent),
+		Comment:        comment,
+		InputFieldLen:  m.Desc.Input().Fields().Len(),
 		OutputFieldLen: m.Desc.Output().Fields().Len(),
 	}
 }

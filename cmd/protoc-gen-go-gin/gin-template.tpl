@@ -6,6 +6,7 @@ import (
 	{{if .ImportSerialize}}
 	"github.com/mangohow/mangokit/serialize"
 	{{- end}}
+	"github.com/mangohow/mangokit/tools"
 	"github.com/mangohow/mangokit/transport/httpwrapper"
 )
 
@@ -30,41 +31,71 @@ type {{.ServiceName}}HTTPService interface {
 }
 
 func Register{{.ServiceName}}HTTPService(server *httpwrapper.Server, svc {{.ServiceName}}HTTPService) {
-	{{- range .Methods}}
-	server.{{.HttpMethod}}("{{.Path}}", _{{.ServiceName}}_{{.Name}}_HTTP_Handler(svc))
-	{{- end}}
+    server.RegisterService(_{{.ServiceName}}HTTPService_serviceDesc, svc)
 }
 
 {{range .Methods}}
-func _{{.ServiceName}}_{{.Name}}_HTTP_Handler(svc {{.ServiceName}}HTTPService) httpwrapper.HandlerFunc {
-	return func(ctx *httpwrapper.Context) error {
+func _{{.ServiceName}}_{{.Name}}_HTTP_Handler(svc interface{}, middleware httpwrapper.Middleware) httpwrapper.Middleware {
+	return func(ctx context.Context, req interface{}, next httpwrapper.NextHandler) error {
 		{{- if ne .InputFieldLen 0}}
 		in := new({{.Request}})
-		if err := ctx.BindRequest(in); err != nil {
-			return err
-		}
+		err := tools.BindVar(ctx, in)
+        if err != nil {
+            return err
+        }
 
-		{{- end}}
-		value := context.WithValue(context.Background(), "gin-ctx", ctx)
-		{{- if and (eq .InputFieldLen 0) (eq .OutputFieldLen 0)}}
-            err := svc.{{.Name}}(value)
-        {{- else if eq .InputFieldLen 0}}
-            reply, err := svc.{{.Name}}(value)
-        {{- else if eq .OutputFieldLen 0}}
-            err := svc.{{.Name}}(value, in)
+		{{end}}
+		handler := func(ctx context.Context, req interface{}) error {
+            ctxt := tools.GinCtxFromContext(ctx)
+            {{- if and (eq .InputFieldLen 0) (eq .OutputFieldLen 0)}}
+                err := svc.({{.ServiceName}}HTTPService).{{.Name}}(ctx)
+            {{- else if eq .InputFieldLen 0}}
+                reply, err := svc.({{.ServiceName}}HTTPService).{{.Name}}(ctx)
+            {{- else if eq .OutputFieldLen 0}}
+                err := svc.({{.ServiceName}}HTTPService).{{.Name}}(ctx, in)
+            {{- else}}
+                reply, err := svc.({{.ServiceName}}HTTPService).{{.Name}}(ctx, in)
+            {{- end}}
+            if err != nil {
+                return err
+            }
+            {{- if ne .OutputFieldLen 0}}
+            ctxt.JSON(http.StatusOK, serialize.Response{Data: reply})
+            {{- else}}
+            ctxt.Status(http.StatusOK)
+            {{- end}}
+
+            return nil
+         }
+
+
+        if middleware == nil {
+            {{- if eq .InputFieldLen 0}}
+            return handler(ctx, nil)
+            {{- else}}
+            return handler(ctx, in)
+            {{- end}}
+        }
+
+        {{if eq .InputFieldLen 0}}
+        return middleware(ctx, nil, handler)
         {{- else}}
-            reply, err := svc.{{.Name}}(value, in)
+        return middleware(ctx, in, handler)
         {{- end}}
-		if err != nil {
-			return err
-		}
-		{{- if ne .OutputFieldLen 0}}
-		ctx.JSON(http.StatusOK, serialize.Response{Data: reply})
-		{{- else}}
-		ctx.Status(http.StatusOK)
-		{{- end}}
-
-		return nil
 	}
 }
 {{end}}
+
+
+var _{{.ServiceName}}HTTPService_serviceDesc = &httpwrapper.ServiceDesc{
+	HandlerType: (*{{.ServiceName}}HTTPService)(nil),
+	Methods: []httpwrapper.MethodDesc{
+	{{- range .Methods}}
+		{
+			Method:  "GET",
+			Path:    "{{.Path}}",
+			Handler: _Greeter_{{.Name}}_HTTP_Handler,
+		},
+	{{- end}}
+	},
+}
