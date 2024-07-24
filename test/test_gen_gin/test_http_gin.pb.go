@@ -4,7 +4,7 @@
 // - protoc             v5.26.1
 // source: test_gen_gin/test.proto
 
-package test_gen_gin
+package test
 
 import (
 	"context"
@@ -28,7 +28,7 @@ func RegisterGreeterHTTPService(server *http.Server, svc GreeterHTTPService) {
 func _Greeter_SayHello_HTTP_Handler(svc interface{}, middleware http.Middleware) http.Middleware {
 	return func(ctx context.Context, req interface{}, next http.NextHandler) error {
 		in := new(GreeterRequest)
-		err := tools.BindVar(ctx, in)
+		err := http.BindVar(ctx, in)
 		if err != nil {
 			return err
 		}
@@ -76,7 +76,7 @@ func _Greeter_SayHelloEmptyRequest_HTTP_Handler(svc interface{}, middleware http
 func _Greeter_SayHelloEmptyResponse_HTTP_Handler(svc interface{}, middleware http.Middleware) http.Middleware {
 	return func(ctx context.Context, req interface{}, next http.NextHandler) error {
 		in := new(GreeterRequest)
-		err := tools.BindVar(ctx, in)
+		err := http.BindVar(ctx, in)
 		if err != nil {
 			return err
 		}

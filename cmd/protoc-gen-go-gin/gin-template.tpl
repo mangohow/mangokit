@@ -38,7 +38,7 @@ func _{{.ServiceName}}_{{.Name}}_HTTP_Handler(svc interface{}, middleware http.M
 	return func(ctx context.Context, req interface{}, next http.NextHandler) error {
 		{{- if ne .InputFieldLen 0}}
 		in := new({{.Request}})
-		err := tools.BindVar(ctx, in)
+		err := http.BindVar(ctx, in)
         if err != nil {
             return err
         }

@@ -1,6 +1,10 @@
 package http
 
-import "net/http"
+import (
+	"context"
+	"github.com/gin-gonic/gin"
+	"net/http"
+)
 
 const (
 	StatusOK = http.StatusOK
@@ -17,3 +21,8 @@ const (
 	StatusBadGateway          = http.StatusBadGateway
 	StatusServiceUnavailable  = http.StatusServiceUnavailable
 )
+
+func BindVar(ctx context.Context, val interface{}) error {
+	c := ctx.Value("gin-ctx").(*gin.Context)
+	return c.ShouldBind(val)
+}

@@ -26,7 +26,7 @@ func RegisterGreeterHTTPService(server *http.Server, svc GreeterHTTPService) {
 func _Greeter_SayHello_HTTP_Handler(svc interface{}, middleware http.Middleware) http.Middleware {
 	return func(ctx context.Context, req interface{}, next http.NextHandler) error {
 		in := new(HelloRequest)
-		err := tools.BindVar(ctx, in)
+		err := http.BindVar(ctx, in)
 		if err != nil {
 			return err
 		}
