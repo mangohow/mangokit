@@ -3,7 +3,7 @@ package test
 import (
 	"context"
 	"fmt"
-	"github.com/mangohow/mangokit/transport/httpwrapper"
+	"github.com/mangohow/mangokit/transport/http"
 	"testing"
 	"time"
 )
@@ -16,16 +16,16 @@ func (f FakeGreeterService) SayHello(ctx context.Context, request *HelloRequest)
 }
 
 func TestProtoGen(t *testing.T) {
-	server := httpwrapper.New(httpwrapper.WithAddr(":80"))
+	server := http.New(http.WithAddr(":80"))
 	service := FakeGreeterService{}
 	RegisterGreeterHTTPService(server, service)
 	server.Start()
 }
 
 func TestProtoGenWithMiddleware(t *testing.T) {
-	server := httpwrapper.New(httpwrapper.WithAddr(":80"))
+	server := http.New(http.WithAddr(":80"))
 	service := FakeGreeterService{}
-	server.Middleware(func(ctx context.Context, req interface{}, next httpwrapper.NextHandler) error {
+	server.Middleware(func(ctx context.Context, req interface{}, next http.NextHandler) error {
 		defer printRunTime(time.Now())()
 		v := req.(*HelloRequest)
 		fmt.Println(v)
@@ -36,7 +36,7 @@ func TestProtoGenWithMiddleware(t *testing.T) {
 		return err
 	})
 
-	server.Middleware(func(ctx context.Context, req interface{}, next httpwrapper.NextHandler) error {
+	server.Middleware(func(ctx context.Context, req interface{}, next http.NextHandler) error {
 		fmt.Println("middleware2 enter")
 		v := req.(*HelloRequest)
 		if v.Name == "test" {

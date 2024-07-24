@@ -1,4 +1,4 @@
-package httpwrapper
+package http
 
 import (
 	"context"
@@ -140,11 +140,11 @@ func (s *Server) RegisterService(sd *ServiceDesc, srv interface{}) {
 func (s *Server) register(sd *ServiceDesc, srv interface{}) {
 	for _, d := range sd.Methods {
 		handler := d.Handler
-		s.handle(d.Method, d.Path, handler(srv, chainHandler(srv, s.middlewares)))
+		s.handle(d.Method, d.Path, handler(srv, chainHandler(s.middlewares)))
 	}
 }
 
-func chainHandler(srv interface{}, middlewares []Middleware) Middleware {
+func chainHandler(middlewares []Middleware) Middleware {
 	if len(middlewares) == 0 {
 		return nil
 	}

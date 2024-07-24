@@ -8,11 +8,10 @@ package test_gen_gin
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/mangohow/mangokit/serialize"
 	"github.com/mangohow/mangokit/tools"
-	"github.com/mangohow/mangokit/transport/httpwrapper"
+	http "github.com/mangohow/mangokit/transport/http"
 )
 
 type GreeterHTTPService interface {
@@ -22,12 +21,12 @@ type GreeterHTTPService interface {
 	SayHelloEmpty(context.Context) error
 }
 
-func RegisterGreeterHTTPService(server *httpwrapper.Server, svc GreeterHTTPService) {
+func RegisterGreeterHTTPService(server *http.Server, svc GreeterHTTPService) {
 	server.RegisterService(_GreeterHTTPService_serviceDesc, svc)
 }
 
-func _Greeter_SayHello_HTTP_Handler(svc interface{}, middleware httpwrapper.Middleware) httpwrapper.Middleware {
-	return func(ctx context.Context, req interface{}, next httpwrapper.NextHandler) error {
+func _Greeter_SayHello_HTTP_Handler(svc interface{}, middleware http.Middleware) http.Middleware {
+	return func(ctx context.Context, req interface{}, next http.NextHandler) error {
 		in := new(GreeterRequest)
 		err := tools.BindVar(ctx, in)
 		if err != nil {
@@ -53,8 +52,8 @@ func _Greeter_SayHello_HTTP_Handler(svc interface{}, middleware httpwrapper.Midd
 	}
 }
 
-func _Greeter_SayHelloEmptyRequest_HTTP_Handler(svc interface{}, middleware httpwrapper.Middleware) httpwrapper.Middleware {
-	return func(ctx context.Context, req interface{}, next httpwrapper.NextHandler) error {
+func _Greeter_SayHelloEmptyRequest_HTTP_Handler(svc interface{}, middleware http.Middleware) http.Middleware {
+	return func(ctx context.Context, req interface{}, next http.NextHandler) error {
 		handler := func(ctx context.Context, req interface{}) error {
 			ctxt := tools.GinCtxFromContext(ctx)
 			reply, err := svc.(GreeterHTTPService).SayHelloEmptyRequest(ctx)
@@ -74,8 +73,8 @@ func _Greeter_SayHelloEmptyRequest_HTTP_Handler(svc interface{}, middleware http
 	}
 }
 
-func _Greeter_SayHelloEmptyResponse_HTTP_Handler(svc interface{}, middleware httpwrapper.Middleware) httpwrapper.Middleware {
-	return func(ctx context.Context, req interface{}, next httpwrapper.NextHandler) error {
+func _Greeter_SayHelloEmptyResponse_HTTP_Handler(svc interface{}, middleware http.Middleware) http.Middleware {
+	return func(ctx context.Context, req interface{}, next http.NextHandler) error {
 		in := new(GreeterRequest)
 		err := tools.BindVar(ctx, in)
 		if err != nil {
@@ -101,8 +100,8 @@ func _Greeter_SayHelloEmptyResponse_HTTP_Handler(svc interface{}, middleware htt
 	}
 }
 
-func _Greeter_SayHelloEmpty_HTTP_Handler(svc interface{}, middleware httpwrapper.Middleware) httpwrapper.Middleware {
-	return func(ctx context.Context, req interface{}, next httpwrapper.NextHandler) error {
+func _Greeter_SayHelloEmpty_HTTP_Handler(svc interface{}, middleware http.Middleware) http.Middleware {
+	return func(ctx context.Context, req interface{}, next http.NextHandler) error {
 		handler := func(ctx context.Context, req interface{}) error {
 			ctxt := tools.GinCtxFromContext(ctx)
 			err := svc.(GreeterHTTPService).SayHelloEmpty(ctx)
@@ -122,9 +121,9 @@ func _Greeter_SayHelloEmpty_HTTP_Handler(svc interface{}, middleware httpwrapper
 	}
 }
 
-var _GreeterHTTPService_serviceDesc = &httpwrapper.ServiceDesc{
+var _GreeterHTTPService_serviceDesc = &http.ServiceDesc{
 	HandlerType: (*GreeterHTTPService)(nil),
-	Methods: []httpwrapper.MethodDesc{
+	Methods: []http.MethodDesc{
 		{
 			Method:  "GET",
 			Path:    "/hello/:name",

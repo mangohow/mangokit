@@ -4,8 +4,7 @@ import (
 	"context"
 	"github.com/mangohow/mangokit/serialize"
 	"github.com/mangohow/mangokit/tools"
-	"github.com/mangohow/mangokit/transport/httpwrapper"
-	"net/http"
+	http "github.com/mangohow/mangokit/transport/http"
 )
 
 type GreeterHTTPService interface {
@@ -20,12 +19,12 @@ type HelloResponse struct {
 	Message string `json:"message"`
 }
 
-func RegisterGreeterHTTPService(server *httpwrapper.Server, svc GreeterHTTPService) {
+func RegisterGreeterHTTPService(server *http.Server, svc GreeterHTTPService) {
 	server.RegisterService(_GreeterHTTPService_serviceDesc, svc)
 }
 
-func _Greeter_SayHello_HTTP_Handler(svc interface{}, middleware httpwrapper.Middleware) httpwrapper.Middleware {
-	return func(ctx context.Context, req interface{}, next httpwrapper.NextHandler) error {
+func _Greeter_SayHello_HTTP_Handler(svc interface{}, middleware http.Middleware) http.Middleware {
+	return func(ctx context.Context, req interface{}, next http.NextHandler) error {
 		in := new(HelloRequest)
 		err := tools.BindVar(ctx, in)
 		if err != nil {
@@ -52,9 +51,9 @@ func _Greeter_SayHello_HTTP_Handler(svc interface{}, middleware httpwrapper.Midd
 
 }
 
-var _GreeterHTTPService_serviceDesc = &httpwrapper.ServiceDesc{
+var _GreeterHTTPService_serviceDesc = &http.ServiceDesc{
 	HandlerType: (*GreeterHTTPService)(nil),
-	Methods: []httpwrapper.MethodDesc{
+	Methods: []http.MethodDesc{
 		{
 			Method:  "GET",
 			Path:    "/helloworld/:name",

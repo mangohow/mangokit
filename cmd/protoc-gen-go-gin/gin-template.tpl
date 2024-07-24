@@ -1,13 +1,12 @@
 
 import (
 	"context"
-	"net/http"
 
 	{{if .ImportSerialize}}
 	"github.com/mangohow/mangokit/serialize"
 	{{- end}}
 	"github.com/mangohow/mangokit/tools"
-	"github.com/mangohow/mangokit/transport/httpwrapper"
+	http "github.com/mangohow/mangokit/transport/http"
 )
 
 {{- if ne .Comment ""}}
@@ -30,13 +29,13 @@ type {{.ServiceName}}HTTPService interface {
 {{- end}}
 }
 
-func Register{{.ServiceName}}HTTPService(server *httpwrapper.Server, svc {{.ServiceName}}HTTPService) {
+func Register{{.ServiceName}}HTTPService(server *http.Server, svc {{.ServiceName}}HTTPService) {
     server.RegisterService(_{{.ServiceName}}HTTPService_serviceDesc, svc)
 }
 
 {{range .Methods}}
-func _{{.ServiceName}}_{{.Name}}_HTTP_Handler(svc interface{}, middleware httpwrapper.Middleware) httpwrapper.Middleware {
-	return func(ctx context.Context, req interface{}, next httpwrapper.NextHandler) error {
+func _{{.ServiceName}}_{{.Name}}_HTTP_Handler(svc interface{}, middleware http.Middleware) http.Middleware {
+	return func(ctx context.Context, req interface{}, next http.NextHandler) error {
 		{{- if ne .InputFieldLen 0}}
 		in := new({{.Request}})
 		err := tools.BindVar(ctx, in)
@@ -87,9 +86,9 @@ func _{{.ServiceName}}_{{.Name}}_HTTP_Handler(svc interface{}, middleware httpwr
 {{end}}
 
 
-var _{{.ServiceName}}HTTPService_serviceDesc = &httpwrapper.ServiceDesc{
+var _{{.ServiceName}}HTTPService_serviceDesc = &http.ServiceDesc{
 	HandlerType: (*{{.ServiceName}}HTTPService)(nil),
-	Methods: []httpwrapper.MethodDesc{
+	Methods: []http.MethodDesc{
 	{{- range .Methods}}
 		{
 			Method:  "GET",
