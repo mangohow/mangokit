@@ -9,9 +9,7 @@ package test
 import (
 	"context"
 
-	"github.com/mangohow/mangokit/serialize"
-	"github.com/mangohow/mangokit/tools"
-	http "github.com/mangohow/mangokit/transport/http"
+	"github.com/mangohow/mangokit/transport/http"
 )
 
 type GreeterHTTPService interface {
@@ -25,100 +23,68 @@ func RegisterGreeterHTTPService(server *http.Server, svc GreeterHTTPService) {
 	server.RegisterService(_GreeterHTTPService_serviceDesc, svc)
 }
 
-func _Greeter_SayHello_HTTP_Handler(svc interface{}, middleware http.Middleware) http.Middleware {
-	return func(ctx context.Context, req interface{}, next http.NextHandler) error {
-		in := new(GreeterRequest)
-		err := http.BindVar(ctx, in)
-		if err != nil {
-			return err
-		}
-
-		handler := func(ctx context.Context, req interface{}) error {
-			ctxt := tools.GinCtxFromContext(ctx)
-			reply, err := svc.(GreeterHTTPService).SayHello(ctx, in)
-			if err != nil {
-				return err
-			}
-			ctxt.JSON(http.StatusOK, serialize.Response{Data: reply})
-
-			return nil
-		}
-
-		if middleware == nil {
-			return handler(ctx, in)
-		}
-
-		return middleware(ctx, in, handler)
+func _Greeter_SayHello_HTTP_Handler(svc interface{}, ctx context.Context, dec func(interface{}) error, middleware http.Middleware) (interface{}, error) {
+	in := new(GreeterRequest)
+	err := dec(in)
+	if err != nil {
+		return nil, err
 	}
+
+	if middleware == nil {
+		return svc.(GreeterHTTPService).SayHello(ctx, in)
+	}
+
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return svc.(GreeterHTTPService).SayHello(ctx, in)
+	}
+
+	return middleware(ctx, in, handler)
+
 }
 
-func _Greeter_SayHelloEmptyRequest_HTTP_Handler(svc interface{}, middleware http.Middleware) http.Middleware {
-	return func(ctx context.Context, req interface{}, next http.NextHandler) error {
-		handler := func(ctx context.Context, req interface{}) error {
-			ctxt := tools.GinCtxFromContext(ctx)
-			reply, err := svc.(GreeterHTTPService).SayHelloEmptyRequest(ctx)
-			if err != nil {
-				return err
-			}
-			ctxt.JSON(http.StatusOK, serialize.Response{Data: reply})
-
-			return nil
-		}
-
-		if middleware == nil {
-			return handler(ctx, nil)
-		}
-
-		return middleware(ctx, nil, handler)
+func _Greeter_SayHelloEmptyRequest_HTTP_Handler(svc interface{}, ctx context.Context, dec func(interface{}) error, middleware http.Middleware) (interface{}, error) {
+	if middleware == nil {
+		return svc.(GreeterHTTPService).SayHelloEmptyRequest(ctx)
 	}
+
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return svc.(GreeterHTTPService).SayHelloEmptyRequest(ctx)
+	}
+
+	return middleware(ctx, nil, handler)
+
 }
 
-func _Greeter_SayHelloEmptyResponse_HTTP_Handler(svc interface{}, middleware http.Middleware) http.Middleware {
-	return func(ctx context.Context, req interface{}, next http.NextHandler) error {
-		in := new(GreeterRequest)
-		err := http.BindVar(ctx, in)
-		if err != nil {
-			return err
-		}
-
-		handler := func(ctx context.Context, req interface{}) error {
-			ctxt := tools.GinCtxFromContext(ctx)
-			err := svc.(GreeterHTTPService).SayHelloEmptyResponse(ctx, in)
-			if err != nil {
-				return err
-			}
-			ctxt.Status(http.StatusOK)
-
-			return nil
-		}
-
-		if middleware == nil {
-			return handler(ctx, in)
-		}
-
-		return middleware(ctx, in, handler)
+func _Greeter_SayHelloEmptyResponse_HTTP_Handler(svc interface{}, ctx context.Context, dec func(interface{}) error, middleware http.Middleware) (interface{}, error) {
+	in := new(GreeterRequest)
+	err := dec(in)
+	if err != nil {
+		return nil, err
 	}
+
+	if middleware == nil {
+		return nil, svc.(GreeterHTTPService).SayHelloEmptyResponse(ctx, in)
+	}
+
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return nil, svc.(GreeterHTTPService).SayHelloEmptyResponse(ctx, in)
+	}
+
+	return middleware(ctx, in, handler)
+
 }
 
-func _Greeter_SayHelloEmpty_HTTP_Handler(svc interface{}, middleware http.Middleware) http.Middleware {
-	return func(ctx context.Context, req interface{}, next http.NextHandler) error {
-		handler := func(ctx context.Context, req interface{}) error {
-			ctxt := tools.GinCtxFromContext(ctx)
-			err := svc.(GreeterHTTPService).SayHelloEmpty(ctx)
-			if err != nil {
-				return err
-			}
-			ctxt.Status(http.StatusOK)
-
-			return nil
-		}
-
-		if middleware == nil {
-			return handler(ctx, nil)
-		}
-
-		return middleware(ctx, nil, handler)
+func _Greeter_SayHelloEmpty_HTTP_Handler(svc interface{}, ctx context.Context, dec func(interface{}) error, middleware http.Middleware) (interface{}, error) {
+	if middleware == nil {
+		return nil, svc.(GreeterHTTPService).SayHelloEmpty(ctx)
 	}
+
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return nil, svc.(GreeterHTTPService).SayHelloEmpty(ctx)
+	}
+
+	return middleware(ctx, nil, handler)
+
 }
 
 var _GreeterHTTPService_serviceDesc = &http.ServiceDesc{

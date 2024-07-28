@@ -2,13 +2,21 @@ package http
 
 import (
 	"context"
+	stderr "errors"
 	"net/http"
 	"reflect"
+	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mangohow/mangokit/errors"
 	"github.com/mangohow/mangokit/serialize"
 	"github.com/sirupsen/logrus"
+)
+
+const (
+	ParamKey = "param"
+	FormKey  = "form"
 )
 
 type Server struct {
@@ -140,7 +148,9 @@ func (s *Server) RegisterService(sd *ServiceDesc, srv interface{}) {
 func (s *Server) register(sd *ServiceDesc, srv interface{}) {
 	for _, d := range sd.Methods {
 		handler := d.Handler
-		s.handle(d.Method, d.Path, handler(srv, chainHandler(s.middlewares)))
+		s.handle(d.Method, d.Path, func(ctx context.Context, req interface{}) (resp interface{}, err error) {
+			return handler(srv, ctx, reqDecoder(ctx), chainHandler(s.middlewares))
+		})
 	}
 }
 
@@ -149,32 +159,34 @@ func chainHandler(middlewares []Middleware) Middleware {
 		return nil
 	}
 
-	return func(ctx context.Context, req interface{}, handler NextHandler) error {
+	return func(ctx context.Context, req interface{}, handler Handler) (interface{}, error) {
 		return middlewares[0](ctx, req, getChainMiddleware(middlewares, 0, handler))
 	}
 }
 
-func getChainMiddleware(middlewares []Middleware, cur int, handler NextHandler) NextHandler {
+func getChainMiddleware(middlewares []Middleware, cur int, handler Handler) Handler {
 	if cur >= len(middlewares)-1 {
 		return handler
 	}
 
-	return func(ctx context.Context, req interface{}) error {
+	return func(ctx context.Context, req interface{}) (interface{}, error) {
 		return middlewares[cur+1](ctx, req, getChainMiddleware(middlewares, cur+1, handler))
 	}
 }
 
-func (s *Server) handle(method, relativePath string, handler Middleware) {
+func (s *Server) handle(method, relativePath string, handler Handler) {
 	s.router.Handle(method, relativePath, s.handlerConvert(handler))
 }
 
-func (s *Server) handlerConvert(handler Middleware) gin.HandlerFunc {
+func (s *Server) handlerConvert(handler Handler) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := context.WithValue(s.ctx, "gin-ctx", c)
-		err := handler(ctx, nil, nil)
+		resp, err := handler(ctx, nil)
 		if err != nil && s.errorFunc != nil {
 			s.errorFunc(c, err, s.log)
+			return
 		}
+		c.JSON(http.StatusOK, resp)
 	}
 }
 
@@ -194,4 +206,86 @@ func (s *Server) Start() error {
 
 func (s *Server) Stop(ctx context.Context) error {
 	return s.server.Shutdown(ctx)
+}
+
+func BindVar(ctx context.Context, val interface{}) error {
+	c := ctx.Value("gin-ctx").(*gin.Context)
+	if err := bindParam(c, val); err != nil {
+		return err
+	}
+	return c.ShouldBind(val)
+}
+
+// 解析路径/xxx/:yyy 中的参数
+func bindParam(ctx *gin.Context, val interface{}) error {
+	if len(ctx.Params) == 0 || !strings.Contains(ctx.FullPath(), ":") {
+		return nil
+	}
+
+	params := ctx.Params
+	v := reflect.ValueOf(val)
+	if v.Type().Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	t := v.Type()
+
+	if v.Type().Kind() != reflect.Struct {
+		return stderr.New("must be struct")
+	}
+
+	n := v.NumField()
+	for i := 0; i < n; i++ {
+		fieldInfo := t.Field(i)
+		fieldVal := v.Field(i)
+		key := fieldInfo.Tag.Get(ParamKey)
+		if key == "" {
+			continue
+		}
+		val := params.ByName(key)
+		if val == "" {
+			continue
+		}
+
+		fieldType := fieldInfo.Type
+		if fieldType.Kind() == reflect.Pointer {
+			fieldType = fieldType.Elem()
+			if fieldVal.IsNil() {
+				fieldVal.Set(reflect.New(fieldType))
+			}
+			fieldVal = fieldVal.Elem()
+		}
+
+		switch fieldType.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			n, err := strconv.ParseInt(val, 10, 64)
+			if err != nil {
+				return err
+			}
+			fieldVal.SetInt(n)
+		case reflect.Float32, reflect.Float64:
+			n, err := strconv.ParseFloat(val, 64)
+			if err != nil {
+				return err
+			}
+			fieldVal.SetFloat(n)
+		case reflect.String:
+			fieldVal.SetString(val)
+		case reflect.Bool:
+			b, err := strconv.ParseBool(val)
+			if err != nil {
+				return err
+			}
+			fieldVal.SetBool(b)
+		default:
+		}
+	}
+
+	return nil
+}
+
+func reqDecoder(ctx context.Context) func(interface{}) error {
+	return func(req interface{}) error {
+		return BindVar(ctx, req)
+	}
 }

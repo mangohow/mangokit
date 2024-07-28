@@ -4,11 +4,11 @@ import (
 	"context"
 )
 
-type Middleware func(ctx context.Context, req interface{}, next NextHandler) error
+type Handler func(ctx context.Context, req interface{}) (resp interface{}, err error)
 
-type methodHandler func(srv interface{}, middleware Middleware) Middleware
+type Middleware func(ctx context.Context, req interface{}, handler Handler) (interface{}, error)
 
-type NextHandler func(context.Context, interface{}) error
+type methodHandler func(srv interface{}, ctx context.Context, dec func(interface{}) error, middleware Middleware) (interface{}, error)
 
 type ServiceDesc struct {
 	HandlerType interface{}

@@ -22,7 +22,7 @@ const (
 	StatusServiceUnavailable  = http.StatusServiceUnavailable
 )
 
-func BindVar(ctx context.Context, val interface{}) error {
-	c := ctx.Value("gin-ctx").(*gin.Context)
-	return c.ShouldBind(val)
+func GinCtxFromContext(ctx context.Context) *gin.Context {
+	c := ctx.Value("gin-ctx")
+	return c.(*gin.Context)
 }
