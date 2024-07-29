@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	_ "embed"
+	"fmt"
+	"os"
 	"strings"
 	"text/template"
 )
@@ -11,10 +13,11 @@ import (
 var TextTemplate string
 
 type ServiceDesc struct {
-	ServiceName     string
-	Comment         string
-	Methods         []*MethodDesc
-	ImportSerialize bool
+	ServiceName      string
+	LowerServiceName string
+	Comment          string
+	Methods          []*MethodDesc
+	ImportSerialize  bool
 }
 
 type MethodDesc struct {
@@ -29,16 +32,22 @@ type MethodDesc struct {
 	// http rule
 	Path   string // 请求路径
 	Method string // 请求方法
+
+	LowerServiceName string // 小写service名
+	EncodeParam      bool
+	EncodeForm       bool
 }
 
 func (s *ServiceDesc) execute() string {
 	buf := new(bytes.Buffer)
 	tmpl, err := template.New("http").Parse(strings.TrimSpace(TextTemplate))
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "parse template error: %v\n", err)
+		os.Exit(1)
 	}
 	if err := tmpl.Execute(buf, s); err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "execute template error: %v\n", err)
+		os.Exit(1)
 	}
 	return strings.Trim(buf.String(), "\r\n")
 }

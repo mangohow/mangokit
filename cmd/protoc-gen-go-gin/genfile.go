@@ -60,6 +60,7 @@ func genService(plugin *protogen.Plugin, file *protogen.File, g *protogen.Genera
 		ServiceName: service.GoName,
 		Comment:     comment,
 	}
+	sd.LowerServiceName = strings.ToLower(sd.ServiceName)
 
 	for _, method := range service.Methods {
 		if method.Desc.IsStreamingClient() || method.Desc.IsStreamingServer() {
@@ -118,9 +119,20 @@ func buildHTTPRule(g *protogen.GeneratedFile, service *protogen.Service, m *prot
 	}
 
 	md := buildMethodDesc(g, m)
-	md.Method = method
+	md.Method = strings.ToUpper(method)
 	md.Path = path
 	md.ServiceName = service.GoName
+	md.LowerServiceName = strings.ToLower(md.ServiceName)
+
+	// 判断pattern中是否存在param
+	if strings.Contains(md.Path, ":") {
+		md.EncodeParam = true
+	}
+
+	// 如果是get请求，并且param参数小于结构体中的field数量，才可能有query参数
+	if method == "GET" && strings.Count(md.Path, ":") < md.InputFieldLen {
+		md.EncodeForm = true
+	}
 
 	return md
 }
