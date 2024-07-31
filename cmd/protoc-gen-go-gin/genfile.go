@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 
 	"google.golang.org/genproto/googleapis/api/annotations"
@@ -118,6 +119,12 @@ func buildHTTPRule(g *protogen.GeneratedFile, service *protogen.Service, m *prot
 		os.Exit(1)
 	}
 
+	// 对path进行合法性校验
+	if !validatePath(path) {
+		fmt.Fprintf(os.Stderr, "path invalid: %s\n", path)
+		os.Exit(1)
+	}
+
 	md := buildMethodDesc(g, m)
 	md.Method = strings.ToUpper(method)
 	md.Path = path
@@ -135,6 +142,19 @@ func buildHTTPRule(g *protogen.GeneratedFile, service *protogen.Service, m *prot
 	}
 
 	return md
+}
+
+func validatePath(path string) bool {
+	if path == "" {
+		return false
+	}
+	if path == "/" {
+		return true
+	}
+	pathPattern := `^(/[a-zA-z0-9]+)*(/:[a-zA-z]+[0-9]*)*$`
+	// 编译正则表达式
+	re := regexp.MustCompile(pathPattern)
+	return re.MatchString(path)
 }
 
 func buildMethodDesc(g *protogen.GeneratedFile, m *protogen.Method) *MethodDesc {

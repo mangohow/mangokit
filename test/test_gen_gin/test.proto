@@ -7,11 +7,11 @@ import "mangokit/stag/stag.proto";
 
 option go_package = "test/test_gen_gin;test";
 
-message GreeterRequest {
-  string name = 1 [(stag.tags)="uri:name"];
+message HelloRequest {
+  string name = 1 [(stag.tags)="param:name"];
 }
 
-message GreeterResponse {
+message HelloResponse {
   string message = 1;
 }
 
@@ -19,20 +19,30 @@ message Empty {
 
 }
 
-service Greeter {
-  rpc SayHello(GreeterRequest) returns (GreeterResponse) {
+message GetRequest {
+  string name = 1 [(stag.tags)="param:name"];
+  string email = 2 [(stag.tags)="form:name"];
+}
+
+message PostRequest {
+  string name = 1 [(stag.tags)="param:name"];
+  string email = 2;
+}
+
+service Hello {
+  rpc SayHello(HelloRequest) returns (HelloResponse) {
     option (google.api.http) = {
       get: "/hello/:name"
     };
   }
 
-  rpc SayHelloEmptyRequest(Empty) returns (GreeterResponse) {
+  rpc SayHelloEmptyRequest(Empty) returns (HelloResponse) {
     option (google.api.http) = {
       get: "/hello1"
     };
   }
 
-  rpc SayHelloEmptyResponse(GreeterRequest) returns (Empty) {
+  rpc SayHelloEmptyResponse(HelloRequest) returns (Empty) {
     option (google.api.http) = {
       get: "/hello2/:name"
     };
@@ -43,6 +53,20 @@ service Greeter {
       get: "/hello3"
     };
   }
+
+
+  rpc PostApi(PostRequest) returns (Empty) {
+    option (google.api.http) = {
+      post: "/post/:name"
+    };
+  }
+
+  rpc GetApi(GetRequest) returns (Empty) {
+    option (google.api.http) = {
+      get: "/get/:name"
+    };
+  }
+
 }
 
 service EmptyGreeter {

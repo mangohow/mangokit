@@ -74,9 +74,6 @@ func _{{.ServiceName}}_{{.Name}}_HTTP_Handler(svc interface{}, ctx context.Conte
 
 type {{.ServiceName}}HTTPClient interface {
 {{- range .Methods}}
-	{{- if ne .Comment ""}}
-	{{.Comment}}
-	{{- end}}
 	{{- if and (eq .InputFieldLen 0) (eq .OutputFieldLen 0)}}
         {{.Name}}(ctx context.Context, opts ...http.CallOption) error
     {{- else if eq .InputFieldLen 0}}
@@ -99,13 +96,13 @@ func New{{.ServiceName}}HTTPClient(client *http.Client) {{.ServiceName}}HTTPClie
 
 {{range .Methods}}
 {{- if and (ne .InputFieldLen 0) (ne .OutputFieldLen 0) -}}
-func (c *greeterHTTPClient) {{.Name}}(ctx context.Context, req *{{.Request}}, opts ...http.CallOption) (*{{.Reply}}, error) {
+func (c *{{.LowerServiceName}}HTTPClient) {{.Name}}(ctx context.Context, req *{{.Request}}, opts ...http.CallOption) (*{{.Reply}}, error) {
 {{- else if ne .InputFieldLen 0 -}}
-func (c *greeterHTTPClient) {{.Name}}(ctx context.Context, req *{{.Request}}, opts ...http.CallOption) error {
+func (c *{{.LowerServiceName}}HTTPClient) {{.Name}}(ctx context.Context, req *{{.Request}}, opts ...http.CallOption) error {
 {{- else if ne .OutputFieldLen 0 -}}
-func (c *greeterHTTPClient) {{.Name}}(ctx context.Context, opts ...http.CallOption) (*{{.Reply}}, error) {
+func (c *{{.LowerServiceName}}HTTPClient) {{.Name}}(ctx context.Context, opts ...http.CallOption) (*{{.Reply}}, error) {
 {{- else -}}
-func (c *greeterHTTPClient) {{.Name}}(ctx context.Context, opts ...http.CallOption) error {
+func (c *{{.LowerServiceName}}HTTPClient) {{.Name}}(ctx context.Context, opts ...http.CallOption) error {
 {{- end -}}
     {{- if ne .OutputFieldLen 0}}
 	reply := new({{.Reply}})
@@ -123,13 +120,13 @@ func (c *greeterHTTPClient) {{.Name}}(ctx context.Context, opts ...http.CallOpti
     path := "{{.Path}}"
     {{- end}}
 	{{- if and (ne .InputFieldLen 0) (ne .OutputFieldLen 0)}}
-    _, err := c.cc.Invoke(ctx, "GET", path, req, reply, opts...)
+    _, err := c.cc.Invoke(ctx, "{{.Method}}", path, req, reply, opts...)
     {{- else if ne .InputFieldLen 0}}
-    _, err := c.cc.Invoke(ctx, "GET", path, req, nil, opts...)
+    _, err := c.cc.Invoke(ctx, "{{.Method}}", path, req, nil, opts...)
     {{- else if ne .OutputFieldLen 0}}
-    _, err := c.cc.Invoke(ctx, "GET", path, nil, reply, opts...)
+    _, err := c.cc.Invoke(ctx, "{{.Method}}", path, nil, reply, opts...)
     {{- else}}
-    _, err := c.cc.Invoke(ctx, "GET", path, nil, nil, opts...)
+    _, err := c.cc.Invoke(ctx, "{{.Method}}", path, nil, nil, opts...)
     {{- end}}
 	
     {{if ne .OutputFieldLen 0}}
@@ -145,9 +142,9 @@ var _{{.ServiceName}}HTTPService_serviceDesc = &http.ServiceDesc{
 	Methods: []http.MethodDesc{
 	{{- range .Methods}}
 		{
-			Method:  "GET",
+			Method:  "{{.Method}}",
 			Path:    "{{.Path}}",
-			Handler: _Greeter_{{.Name}}_HTTP_Handler,
+			Handler: _{{.ServiceName}}_{{.Name}}_HTTP_Handler,
 		},
 	{{- end}}
 	},
