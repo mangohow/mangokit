@@ -20,7 +20,7 @@ var CmdAddApi = &cobra.Command{
 	Use:     "api",
 	Short:   "Add proto api file",
 	Long:    "Add proto api file",
-	Example: "mangokit add api api/helloworld/v1/proto hello.proto",
+	Example: "mangokit add api api/helloworld hello.proto",
 	Run: func(cmd *cobra.Command, args []string) {
 		dir, name := cmdFunc(args)
 		GenerateProtoFile(dir, name, ProtoApiContent)
@@ -31,7 +31,7 @@ var CmdAddError = &cobra.Command{
 	Use:     "error",
 	Short:   "Add proto error file",
 	Long:    "Add proto error file",
-	Example: "mangokit add api api/helloworld/v1/proto errReason.proto",
+	Example: "mangokit add error api/errors errReason.proto",
 	Run: func(cmd *cobra.Command, args []string) {
 		dir, name := cmdFunc(args)
 		GenerateProtoFile(dir, name, ProtoErrorContent)
@@ -76,9 +76,10 @@ var ProtoApiContent string
 var ProtoErrorContent string
 
 type TemplateInfo struct {
-	Package string
-	Name    string
+	Package  string
+	Name     string
 	FileName string
+	DirName  string
 }
 
 func (t *TemplateInfo) execute(content string) string {
@@ -93,20 +94,17 @@ func (t *TemplateInfo) execute(content string) string {
 	return strings.Trim(buf.String(), "\r\n")
 }
 
-func GenerateProtoFile(dir, name string, content string) error {
+func GenerateProtoFile(dir, name, content string) error {
 	dir = strings.TrimRight(dir, string(filepath.Separator))
 	path := filepath.Join(dir, name)
 	pkg := dir
-	// 如果生成的proto文件在proto文件夹下，则选择将生成的proto文件放在上一级目录
-	// 例如 api/hello/v1/proto   .proto文件放在proto文件夹下，而生成的.go文件放在v1文件夹下
-	if strings.HasSuffix(pkg, "/proto") {
-		pkg = strings.TrimRight(pkg, "/proto")
-	}
-	filename := strings.TrimSuffix(name, filepath.Ext(name))  // 去掉文件后缀
+
+	filename := strings.TrimSuffix(name, filepath.Ext(name)) // 去掉文件后缀
 	info := &TemplateInfo{
-		Package: pkg,
+		Package:  pkg,
 		FileName: filename,
-		Name:    case2Camel(filename),
+		Name:     case2Camel(filename),
+		DirName:  filepath.Base(dir),
 	}
 	if filepath.IsAbs(dir) {
 		wd, err := os.Getwd()
@@ -121,15 +119,12 @@ func GenerateProtoFile(dir, name string, content string) error {
 			return err
 		}
 		info.Package = rel
-		if strings.HasSuffix(info.Package, "/proto") {
-			info.Package = strings.TrimRight(info.Package, "/proto")
-		}
 	}
 	// 在windows下是\\，但是在proto文件中都为/
 	info.Package = strings.ReplaceAll(info.Package, "\\", "/")
 
 	// 如果目录不存在，创建目录
-	if _, err := os.Stat(dir); err != nil || os.IsNotExist(err){
+	if _, err := os.Stat(dir); err != nil || os.IsNotExist(err) {
 		if err = os.MkdirAll(dir, 0666); err != nil {
 			color.Red("create directory %s failed, %v", dir, err)
 			return err

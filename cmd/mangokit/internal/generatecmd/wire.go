@@ -24,11 +24,11 @@ var CmdGenWire = &cobra.Command{
 	},
 }
 
-func GenerateWire()  error{
+func GenerateWire() error {
 	c := exec.Command("go", "mod", "tidy")
 	if err := c.Run(); err != nil {
-		return err
 		color.Red("go mod tidy, %v\n", err)
+		return err
 	}
 
 	path, err := os.Getwd()

@@ -65,7 +65,7 @@ func GenerateProtos(dir string) error {
 	for _, s := range protoPath {
 		args = append(args, "--proto_path="+s)
 	}
-	args = append(args, "--gogo_out=.")
+	args = append(args, "--go_out=.")
 	args = append(args, "--go-gin_out=.")
 	args = append(args, "--go-error_out=.")
 	args = append(args, protos...)

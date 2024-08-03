@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-package {{.FileName}}.v1;
+package {{.FileName}};
 
 import "google/api/annotations.proto";
 
-option go_package = "{{.Package}};v1";
+option go_package = "{{.Package}};{{.DirName}}";
 
 service {{.Name}} {
 

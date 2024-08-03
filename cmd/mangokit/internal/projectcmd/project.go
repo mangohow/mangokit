@@ -3,14 +3,13 @@ package projectcmd
 import (
 	"bytes"
 	"context"
+	"github.com/fatih/color"
+	"github.com/mangohow/mangokit/cmd/mangokit/parallel"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-
-	"github.com/fatih/color"
-	"github.com/mangohow/mangokit/cmd/mangokit/parallel"
 )
 
 type ProjectGenerator struct {
@@ -62,7 +61,7 @@ func (p *ProjectGenerator) CloneRepo(ctx context.Context) error {
 	}
 
 	words := strings.Split(p.RepoUrl, "/")
-	oldDirName := words[len(words)-1]
+	oldDirName := strings.TrimSuffix(words[len(words)-1], ".git")
 
 	// 修改目录名
 	if err := os.Rename(oldDirName, p.DirName); err != nil {
@@ -82,28 +81,22 @@ func (p *ProjectGenerator) ModifyFiles() error {
 		return err
 	}
 
-	// 2.从 go mod中获取原项目名
-	module, err := p.GetGoModName()
+	// 2. 修改Go mod中的module, 并返回之前的名称
+	module, err := p.ModifyGoModule()
 	if err != nil {
+		color.Red("modify go.mod failed, %v\n", err)
 		return err
 	}
 
-	// 3. 删除go.mod
-	if err := os.Remove(filepath.Join(p.BaseDir, "go.mod")); err != nil {
-		color.Red("remove go.mod failed, %v\n", err)
-		return err
-	}
-
-	// 4. 修改go文件中的import
+	// 3. 修改go文件中的import
 	if err := p.ModifyGoImports(module); err != nil {
 		return err
 	}
 
-	// 5. 重新初始化go mod
-	return p.GoModInit()
+	return nil
 }
 
-func (p *ProjectGenerator) GetGoModName() (string, error) {
+func (p *ProjectGenerator) ModifyGoModule() (string, error) {
 	goModPath := filepath.Join(p.BaseDir, "go.mod")
 	content, err := os.ReadFile(goModPath)
 	if err != nil {
@@ -111,10 +104,31 @@ func (p *ProjectGenerator) GetGoModName() (string, error) {
 		return "", err
 	}
 
+	// 获取原module名称
 	index := bytes.Index(content, []byte("module")) + len("module")
 	lineEndIndex := bytes.Index(content, []byte("\n"))
 	moduleStr := string(content[index:lineEndIndex])
 	module := strings.Trim(moduleStr, " \r\n")
+
+	// 写入新的名称
+	f, err := os.OpenFile(goModPath, os.O_RDWR, 0644)
+	if err != nil {
+		color.Red("open go.mod failed, %v\n", err)
+		return "", err
+	}
+	defer f.Close()
+	if err := f.Truncate(0); err != nil {
+		color.Red("truncate go.mod failed, %v\n", err)
+		return "", err
+	}
+	if _, err := f.Write([]byte("module " + p.ProjectName + "\n")); err != nil {
+		color.Red("write go.mod failed, %v\n", err)
+		return "", err
+	}
+	if _, err := f.Write(content[lineEndIndex+1:]); err != nil {
+		color.Red("write go.mod failed, %v\n", err)
+		return "", err
+	}
 
 	return module, nil
 }

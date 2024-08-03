@@ -68,7 +68,7 @@ var CmdProject = &cobra.Command{
 }
 
 var (
-	repoUrl = "https://github.com/mangohow/mangokit-template"
+	repoUrl = "https://github.com/mangohow/mangokit-template.git"
 	branch  = ""
 	timeout = "60s"
 
