@@ -1,10 +1,4 @@
 
-import (
-	"fmt"
-
-	"github.com/mangohow/mangokit/errors"
-)
-
 {{ if .GenDesc}}
 const (
 	{{- range .Errors}}

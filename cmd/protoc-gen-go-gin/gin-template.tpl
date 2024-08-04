@@ -1,10 +1,4 @@
 
-import (
-	"context"
-
-	"github.com/mangohow/mangokit/transport/http"
-)
-
 {{- if ne .Comment ""}}
 {{.Comment}}
 {{- end}}
@@ -68,7 +62,7 @@ func _{{.ServiceName}}_{{.Name}}_HTTP_Handler(svc interface{}, ctx context.Conte
     return middleware(ctx, nil, handler)
     {{else}}
     return middleware(ctx, in, handler)
-    {{end}}
+    {{- end -}}
 }
 {{end}}
 

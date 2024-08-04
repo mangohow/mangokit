@@ -34,6 +34,13 @@ func generateFile(plugin *protogen.Plugin, file *protogen.File) *protogen.Genera
 	g.P("package ", file.GoPackageName)
 	g.P()
 
+	// gen import
+	g.P("import (")
+	g.P(`"context"`)
+	g.P()
+	g.P(`"github.com/mangohow/mangokit/transport/http"`)
+	g.P(")")
+
 	generateFileContent(plugin, file, g)
 
 	return nil
