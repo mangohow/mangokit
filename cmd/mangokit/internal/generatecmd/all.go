@@ -9,10 +9,10 @@ import (
 )
 
 var CmdGenAll = &cobra.Command{
-	Use:   "all",
+	Use:     "all",
 	Example: "mangokit generate proto api",
-	Short: "Generate proto, openapi and wire",
-	Long:  "Generate proto, openapi and wire",
+	Short:   "Generate proto, openapi and wire",
+	Long:    "Generate proto, openapi and wire",
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
 			fmt.Fprintf(os.Stderr, "missing file path you wang to generate.")
@@ -23,7 +23,6 @@ var CmdGenAll = &cobra.Command{
 		GenerateAll(dir)
 	},
 }
-
 
 func GenerateAll(dir string) {
 	if err := GenerateProtos(dir); err != nil {
