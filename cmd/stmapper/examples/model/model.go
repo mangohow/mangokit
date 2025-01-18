@@ -15,6 +15,12 @@ type Username struct {
 type User struct {
 	Id       int
 	Username string
+	U        Username
+}
+
+type UserInfo struct {
+	U     User
+	Email string
 }
 
 type Integer int

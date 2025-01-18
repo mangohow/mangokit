@@ -1,12 +1,15 @@
-package internal
+package parser
 
 import (
 	"errors"
 	"fmt"
+	"github.com/mangohow/mangokit/cmd/stmapper/internal/log"
+	"github.com/mangohow/mangokit/cmd/stmapper/internal/types"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"path/filepath"
 	"strings"
 )
 
@@ -26,12 +29,12 @@ type fieldType struct {
 type AstParser struct {
 	fst              *token.FileSet
 	typeDeclarations *TypeManager
-	mkf              MappingKeyFunc
+	mkf              types.MappingKeyFunc
 }
 
-func NewAstParser(mkf MappingKeyFunc) *AstParser {
+func NewAstParser(mkf types.MappingKeyFunc, fst *token.FileSet) *AstParser {
 	ap := &AstParser{
-		fst: token.NewFileSet(),
+		fst: fst,
 		mkf: mkf,
 	}
 	ap.typeDeclarations = NewTypeManager(ap.fst)
@@ -41,7 +44,7 @@ func NewAstParser(mkf MappingKeyFunc) *AstParser {
 
 // ParseDir 解析目录下的go代码
 // 目录下可能还有目录，因此可能存在多个package
-func (p *AstParser) ParseDir(dir string) ([]*Package, error) {
+func (p *AstParser) ParseDir(dir string) ([]*types.Package, error) {
 	pkgs, err := parser.ParseDir(p.fst, dir, func(info fs.FileInfo) bool {
 		// 所有生成的文件以xxx_gen.go结尾或者测试文件，忽略这些文件
 		if strings.HasSuffix(info.Name(), "_gen.go") ||
@@ -54,9 +57,9 @@ func (p *AstParser) ParseDir(dir string) ([]*Package, error) {
 		return nil, err
 	}
 
-	res := make([]*Package, 0, len(pkgs))
+	res := make([]*types.Package, 0, len(pkgs))
 	for name, pkg := range pkgs {
-		Debugf("pkg: %+v", name)
+		log.Debugf("pkg: %+v", name)
 		pp := NewPackageParser(pkg, p.fst, p.typeDeclarations, p.mkf)
 		pk, err := pp.Parse()
 		if err != nil {
@@ -76,10 +79,10 @@ type PackageParser struct {
 	sharedTypeManager *TypeManager
 	// 用于存放本包的类型声明
 	typeManager *TypeManager
-	mkf         MappingKeyFunc
+	mkf         types.MappingKeyFunc
 }
 
-func NewPackageParser(astPkg *ast.Package, fst *token.FileSet, sharedTypeManager *TypeManager, mkf MappingKeyFunc) *PackageParser {
+func NewPackageParser(astPkg *ast.Package, fst *token.FileSet, sharedTypeManager *TypeManager, mkf types.MappingKeyFunc) *PackageParser {
 	return &PackageParser{
 		pkgName:           astPkg.Name,
 		astPkg:            astPkg,
@@ -90,10 +93,10 @@ func NewPackageParser(astPkg *ast.Package, fst *token.FileSet, sharedTypeManager
 	}
 }
 
-func (p *PackageParser) Parse() (*Package, error) {
+func (p *PackageParser) Parse() (*types.Package, error) {
 	_ = p.typeManager.LoadPackage(p.astPkg, "")
 
-	pkg := &Package{
+	pkg := &types.Package{
 		Name: p.pkgName,
 	}
 	for path, file := range p.astPkg.Files {
@@ -108,14 +111,15 @@ func (p *PackageParser) Parse() (*Package, error) {
 }
 
 // 解析单个文件
-func (p *PackageParser) parseFile(absPath string, file *ast.File) (*File, error) {
+func (p *PackageParser) parseFile(absPath string, file *ast.File) (*types.File, error) {
 	if !p.check(file) {
 		return nil, nil
 	}
 
-	fileDesc := &File{
+	fileDesc := &types.File{
 		Comments: file.Comments,
 		AbsPath:  absPath,
+		Name:     filepath.Base(absPath),
 		Package:  p.pkgName,
 	}
 	for _, imp := range file.Imports {
@@ -141,6 +145,8 @@ func (p *PackageParser) parseFile(absPath string, file *ast.File) (*File, error)
 				fileDesc.OtherDecls = append(fileDesc.OtherDecls, decl)
 			} else {
 				fileDesc.Funcs = append(fileDesc.Funcs, fn)
+				// 添加一个nil来占位，生成代码时还按照原来的顺序
+				fileDesc.OtherDecls = append(fileDesc.OtherDecls, nil)
 			}
 		}
 	}
@@ -148,49 +154,64 @@ func (p *PackageParser) parseFile(absPath string, file *ast.File) (*File, error)
 	return fileDesc, nil
 }
 
-func (p *PackageParser) parseFunc(file *ast.File, decl *ast.FuncDecl, fileDesc *File) (fn *Func, er error) {
-	fn = &Func{
-		Name:     decl.Name.Name,
-		Comments: decl.Doc,
+func (p *PackageParser) parseFunc(file *ast.File, decl *ast.FuncDecl, fileDesc *types.File) (fn *types.Func, er error) {
+	fn = &types.Func{
+		Name:        decl.Name.Name,
+		Comments:    decl.Doc,
+		AstFuncType: decl.Type,
+		File:        fileDesc,
 	}
 
+	var (
+		inputParam  = decl.Type.Params
+		outputParam = decl.Type.Results
+	)
+
+	// 结构体方法, 要求没有输入参数，必须有输出参数
 	if decl.Recv != nil {
-		// TODO 后续实现为结构体绑定转换方法
+		if decl.Type.Params != nil && len(decl.Type.Params.List) > 0 {
+			return nil, fmt.Errorf("expect no input parammeters, in file %s, func %s", file.Name.Name, decl.Name.Name)
+		}
+		if decl.Type.Results == nil || len(decl.Type.Results.List) == 0 {
+			return nil, fmt.Errorf("no output parammeters, in file %s, func %s", file.Name.Name, decl.Name.Name)
+		}
+		fn.AstReceiver = decl.Recv
+		inputParam = decl.Recv
 	}
 
 	// 获取当前函数的输入参数
-	inputs, err := p.parseParameter(file, decl, decl.Type.Params, true)
+	inputs, err := p.parseParameter(file, decl, inputParam, true)
 	if err != nil {
 		return nil, err
 	}
 	// 获取当前函数的输出参数
-	outputs, err := p.parseParameter(file, decl, decl.Type.Results, false)
+	outputs, err := p.parseParameter(file, decl, outputParam, false)
 	if err != nil {
 		return nil, err
 	}
 
 	// 根据输入输出参数以及函数标记获取要进行映射拷贝的结构体或切片类型
-	fnInfo, err := p.parseFuncLabel(file, decl, inputs, outputs)
+	fnInfo, err := BuildFuncInfo(file, decl, inputs, outputs, fn)
 	if err != nil {
 		return nil, err
 	}
 
 	// 获取所有输入输出参数的类型信息
-	return p.buildFunc(fnInfo, file, decl, fileDesc)
+	return p.buildFunc(fnInfo, file, decl, fn)
 }
 
-func (p *PackageParser) buildFunc(fnInfo *funcInfo, file *ast.File, fn *ast.FuncDecl, fileDesc *File) (*Func, error) {
+func (p *PackageParser) buildFunc(astFn *FuncInfo, file *ast.File, fnDecl *ast.FuncDecl, fnDesc *types.Func) (*types.Func, error) {
 	// 寻找定义
-	for _, input := range fnInfo.input {
-		tp, absPkg, err := p.findDeclaration(input, fileDesc)
+	for _, input := range astFn.input {
+		tp, absPkg, err := p.findDeclaration(input, fnDesc.File)
 		if err != nil {
 			return nil, fmt.Errorf("failed to find declaration of %s: %w", input.typeName, err)
 		}
 		input.astType = tp
 		input.absPkg = absPkg
 	}
-	for _, output := range fnInfo.output {
-		tp, absPkg, err := p.findDeclaration(output, fileDesc)
+	for _, output := range astFn.output {
+		tp, absPkg, err := p.findDeclaration(output, fnDesc.File)
 		if err != nil {
 			return nil, fmt.Errorf("failed to find declaration of %s: %w", output.typeName, err)
 		}
@@ -198,22 +219,28 @@ func (p *PackageParser) buildFunc(fnInfo *funcInfo, file *ast.File, fn *ast.Func
 		output.absPkg = absPkg
 	}
 
+	mkf := p.mkf
+	if astFn.mkf != nil {
+		mkf = astFn.mkf
+	}
 	res, err := NewFuncDescBuilder(
 		p.sharedTypeManager,
 		p.typeManager,
-		p.mkf,
-		fileDesc.Imports,
-		fnInfo,
-	).Build(fn.Name.Name)
+		mkf,
+		fnDesc.File.Imports,
+		astFn,
+	).Build(fnDecl.Name.Name)
 	if err != nil {
-		return nil, fmt.Errorf("%s, in file: %s, func: %s", err.Error(), file.Name.Name, fn.Name.Name)
+		return nil, fmt.Errorf("%s, in file: %s, func: %s", err.Error(), file.Name.Name, fnDecl.Name.Name)
 	}
 
-	return res, nil
+	fnDesc.Inputs = res.Inputs
+	fnDesc.Outputs = res.Outputs
+	return fnDesc, nil
 }
 
 // 查找类型定义
-func (p *PackageParser) findDeclaration(ft *fieldType, fileDesc *File) (*ast.TypeSpec, string, error) {
+func (p *PackageParser) findDeclaration(ft *fieldType, fileDesc *types.File) (*ast.TypeSpec, string, error) {
 	// 在当前包里寻找
 	pkgName := ft.pkg
 	if pkgName == "" {
@@ -222,71 +249,6 @@ func (p *PackageParser) findDeclaration(ft *fieldType, fileDesc *File) (*ast.Typ
 
 	// 在其他包里寻找
 	return p.sharedTypeManager.GetTypeSpec(pkgName, ft.typeName, fileDesc.Imports)
-}
-
-// 解析函数标记，并获取参数信息
-func (p *PackageParser) parseFuncLabel(file *ast.File, decl *ast.FuncDecl, inputs, outputs []*fieldType) (fl *funcInfo, e error) {
-	args := make([]string, 0, len(inputs))
-	found := false
-	fl = &funcInfo{}
-	// 获取函数标记
-	ast.Inspect(decl.Body, func(n ast.Node) bool {
-		if n == nil {
-			return true
-		}
-		// 如果发生错误，则停止遍历
-		if e != nil {
-			return false
-		}
-		// 如果已经找到，则不需要再找
-		if found {
-			return false
-		}
-
-		ce, ok := n.(*ast.CallExpr)
-		if !ok {
-			return true
-		}
-		se, ok := ce.Fun.(*ast.SelectorExpr)
-		if !ok {
-			return true
-		}
-		x, ok := fl.Match(se.Sel.Name)
-		if !ok {
-			return true
-		}
-		sel, ok := se.X.(*ast.Ident)
-		if !ok || sel.Name != x {
-			return true
-		}
-
-		fl.name = FuncLabel(se.Sel.Name)
-		found = true
-		for _, arg := range ce.Args {
-			// 函数中可能还有函数调用，这是非法的
-			name, ok := arg.(*ast.Ident)
-			if !ok {
-				e = fmt.Errorf("func label parameter imvalid, in file %s, func %s", file.Name.Name, decl.Name.Name)
-				return false
-			}
-
-			args = append(args, name.Name)
-		}
-
-		return false
-	})
-
-	// 没有找到函数标记
-	if fl.name == "" {
-		return nil, UnimportantError
-	}
-
-	e = fl.Build(args, inputs, outputs, file.Name.Name, decl.Name.Name)
-	if e != nil {
-		return nil, e
-	}
-
-	return
 }
 
 // 解析输入或输出参数
@@ -325,7 +287,7 @@ func (p *PackageParser) parseParameter(file *ast.File, fn *ast.FuncDecl, params 
 			case *ast.StarExpr: // 指针类型
 				// 为多级指针，不支持
 				if ft.star {
-					return nil, NewUnsupportedTypeConversionError(file.Name.Name, fn.Name.Name, ips[0])
+					return nil, types.NewUnsupportedTypeConversionError(file.Name.Name, fn.Name.Name, ips[0])
 				}
 				ft.star = true
 				t = typ.X
@@ -339,12 +301,12 @@ func (p *PackageParser) parseParameter(file *ast.File, fn *ast.FuncDecl, params 
 			case *ast.ArrayType: // 切片类型
 				// 如果是*[]xxx类型，则不支持
 				if ft.star {
-					return nil, NewUnsupportedTypeConversionError(file.Name.Name, fn.Name.Name, ips[0])
+					return nil, types.NewUnsupportedTypeConversionError(file.Name.Name, fn.Name.Name, ips[0])
 				}
 				ft.isSlice = true
 				t = typ.Elt
 			default: // 其他类型，暂时不支持
-				return nil, NewUnsupportedTypeConversionError(file.Name.Name, fn.Name.Name, ips[0])
+				return nil, types.NewUnsupportedTypeConversionError(file.Name.Name, fn.Name.Name, ips[0])
 			}
 		}
 
@@ -390,7 +352,7 @@ func (p *PackageParser) checkFunc(fn *ast.FuncDecl) (res bool) {
 		if !ok {
 			return true
 		}
-		x, ok := (&funcInfo{}).Match(se.Sel.Name)
+		x, ok := MatchFuncLabel(se.Sel.Name)
 		if !ok {
 			return true
 		}

@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/mangohow/mangokit/cmd/stmapper/internal"
+	"github.com/mangohow/mangokit/cmd/stmapper/internal/generator"
 	"go/ast"
 	"go/build"
 	"go/parser"
@@ -20,17 +20,17 @@ var (
 func init() {
 	flag.StringVar(&tag, "t", "stmapper", "specifies the tag on which the struct copies the field")
 	flag.StringVar(&mode, "m", "name", "set the basis for copying struct fields, based on the name or tag")
-	flag.StringVar(&copyMode, "d", "shallow", "shallow or deep copies, deep copies only support basic types such as asintxx、uintxx、floatxx、string")
+	flag.StringVar(&copyMode, "d", "shallow", "shallow or deep copies, deep copies only support basic types such as intxx、uintxx、floatxx、string")
 	flag.Parse()
 }
 
 func main() {
-	generator := internal.NewGenerator(internal.Config{
+	g := generator.NewGenerator(generator.Config{
 		Mode:     mode,
 		Tag:      tag,
 		CopyMode: copyMode,
 	})
-	generator.Execute()
+	g.Execute()
 	//dir, err := os.Getwd()
 	//if err != nil {
 	//	panic(err)

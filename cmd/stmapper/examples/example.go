@@ -1,8 +1,10 @@
 package examples
 
 import (
+	"fmt"
 	"github.com/mangohow/mangokit/cmd/stmapper/examples/model"
 	"github.com/mangohow/mangokit/stmapper"
+	"strconv"
 	"time"
 )
 
@@ -106,9 +108,34 @@ type User struct {
 	Id int `stmapper:"id"`
 }
 
+type User1 struct {
+	Id *int `stmapper:"id"`
+}
+
+type User2 struct {
+	Id interface{}
+}
+
+type UserInfo struct {
+	Id       int    `convert:"id"`
+	Username string `convert:"username"`
+}
+
+func BuildParseInt() {
+	s := "123"
+	n, _ := strconv.ParseInt(s, 10, 64)
+	fmt.Println(n)
+}
+
 // Conv3 将结构体id和username映射到类型为User的结构体，并返回
 func Conv3(id model.Id, username model.Username) (u model.User) {
+	stmapper.ByName()
 	panic(stmapper.BuildMappingFrom(id, username))
+}
+
+func (u *UserInfo) ToUser() *User {
+	stmapper.ByTag("convert")
+	panic(stmapper.BuildMappingFrom(u))
 }
 
 // Conv4 将结构体id和username映射到类型为User的结构体
@@ -130,9 +157,35 @@ func Conv2(up model.UserProto) model.User {
 	panic(stmapper.BuildMappingFrom(up))
 }
 
+func NumToString() {
+	a := 10
+	s := strconv.FormatInt(int64(a), 10)
+	strconv.FormatUint(uint64(a), 10)
+	strconv.FormatFloat(float64(a), 'g', -1, 64)
+	fmt.Println(s)
+}
+
+func NumToNum() {
+	a := 6
+	u := User{Id: 8}
+	b := int64(a)
+	c := int32(u.Id)
+	fmt.Println(b, c)
+}
+
+func ConvUser(u1 *User, u2 *User1) {
+	u2.Id = &u1.Id
+	u1.Id = *u2.Id
+}
+
+func ConvUserInterface(u1 *User, u2 User1, u3 *User2) {
+	u1.Id = u3.Id.(int)
+	u2.Id = u3.Id.(*int)
+}
+
 // UserProtoToUser1 赋值是无用的
-func UserProtoToUser1(u1 model.UserProto, u2 model.User) {
-	u2.Id = u1.Id
+func UserProtoToUser1(u1 model.UserProto, u2 model.UserInfo) {
+	u2.U.U.Username = ""
 }
 
 // UserProtoToUser2 赋值是无用的

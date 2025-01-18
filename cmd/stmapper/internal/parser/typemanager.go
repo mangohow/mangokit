@@ -1,4 +1,4 @@
-package internal
+package parser
 
 import (
 	"fmt"
@@ -68,7 +68,7 @@ func (tm *TypeManager) GetTypeSpec(pkgName, typeName string, pkgs [][2]string) (
 	}
 	typ, ok := ts[typeName]
 	if !ok {
-		return nil, "", fmt.Errorf("type %s not found", typeName)
+		return nil, "", fmt.Errorf("type not found")
 	}
 
 	return typ, pkgName, nil

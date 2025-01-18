@@ -1,81 +1,163 @@
-package internal
+package parser
 
 import (
 	"fmt"
+	"github.com/mangohow/mangokit/cmd/stmapper/internal/types"
 	"go/ast"
-	"reflect"
 	"slices"
+	"strings"
 )
 
 type FuncLabel string
 
-var (
-	basicTypes = map[string]reflect.Kind{
-		"bool":        reflect.Bool,
-		"int":         reflect.Int,
-		"int8":        reflect.Int8,
-		"int16":       reflect.Int16,
-		"int32":       reflect.Int32,
-		"int64":       reflect.Int64,
-		"uint":        reflect.Uint,
-		"uint8":       reflect.Uint8,
-		"uint16":      reflect.Uint16,
-		"uint32":      reflect.Uint32,
-		"uint64":      reflect.Uint64,
-		"float32":     reflect.Float32,
-		"float64":     reflect.Float64,
-		"string":      reflect.String,
-		"any":         reflect.Interface,
-		"interface{}": reflect.Interface,
-	}
-)
-
-func isBasicType(t string) bool {
-	_, ok := basicTypes[t]
-	return ok
-}
-
-func reflectKind(t string) reflect.Kind {
-	return basicTypes[t]
-}
-
 const (
 	BuildMapping     FuncLabel = "BuildMapping"
 	BuildMappingFrom           = "BuildMappingFrom"
+	ByName                     = "ByName"
+	ByTag                      = "ByTag"
 )
 
 var (
 	labels = map[FuncLabel]string{
 		BuildMapping:     "stmapper",
 		BuildMappingFrom: "stmapper",
+		ByName:           "stmapper",
+		ByTag:            "stmapper",
 	}
 )
 
-type funcInfo struct {
+type FuncInfo struct {
 	absPkg string // 绝对包名
 	name   FuncLabel
+	mkf    types.MappingKeyFunc
 	input  []*fieldType
 	output []*fieldType
 }
 
-func (f *funcInfo) Match(name string) (string, bool) {
-	val, ok := labels[FuncLabel(name)]
-	return val, ok
-}
+// BuildFuncInfo 解析函数标记，并获取参数信息
+func BuildFuncInfo(file *ast.File, decl *ast.FuncDecl, inputs, outputs []*fieldType, fnDesc *types.Func) (funcInfo *FuncInfo, e error) {
+	funcInfo = &FuncInfo{}
+	type AstInfo struct {
+		label FuncLabel
+		args  []ast.Expr
+	}
 
-// Build 构建输入输出参数
-func (f *funcInfo) Build(args []string, inputs, outputs []*fieldType, file, fnName string) (err error) {
-	switch f.name {
-	case BuildMapping: // 第一个参数为输入参数，第二个为输出参数
-		err = f.buildMapping(args, inputs, outputs, file, fnName)
-	case BuildMappingFrom: // 全部为输入参数
-		err = f.buildMappingFrom(args, inputs, outputs, file, fnName)
+	ais := make([]AstInfo, 0, 2)
+	// 获取函数标记
+	ast.Inspect(decl.Body, func(n ast.Node) bool {
+		if n == nil {
+			return true
+		}
+		// 如果发生错误，则停止遍历
+		if e != nil {
+			return false
+		}
+
+		ce, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		se, ok := ce.Fun.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		x, ok := MatchFuncLabel(se.Sel.Name)
+		if !ok {
+			return true
+		}
+		sel, ok := se.X.(*ast.Ident)
+		if !ok || sel.Name != x {
+			return true
+		}
+
+		ais = append(ais, AstInfo{
+			label: FuncLabel(se.Sel.Name),
+			args:  ce.Args,
+		})
+
+		return true
+	})
+
+	fillArgs := func(fi *FuncInfo, exprArgs []ast.Expr) ([]string, error) {
+		args := make([]string, 0, len(exprArgs))
+		for _, arg := range exprArgs {
+			// 函数中可能还有函数调用，这是非法的
+			name, ok := arg.(*ast.Ident)
+			if !ok {
+				return nil, fmt.Errorf("func label parameter invalid, in file %s, func %s", file.Name.Name, decl.Name.Name)
+			}
+
+			args = append(args, name.Name)
+		}
+		return args, nil
+	}
+
+	setKeyTag := func(fi *FuncInfo, exprArgs []ast.Expr) error {
+		if len(exprArgs) != 1 {
+			return fmt.Errorf("ByTag func label expect one parameter, but got %d, in file %s, func %s", len(exprArgs), file.Name.Name, decl.Name.Name)
+		}
+
+		arg, ok := exprArgs[0].(*ast.BasicLit)
+		if !ok {
+			return fmt.Errorf("func label parameter invalid, in file %s, func %s", file.Name.Name, decl.Name.Name)
+		}
+		ttag := strings.Trim(arg.Value, `"`)
+		fi.mkf = func(name, tag string) string {
+			return types.TagMappingKeyFunc(name, tag, ttag)
+		}
+
+		return nil
+	}
+
+	var args []string
+	for _, ai := range ais {
+		switch ai.label {
+		case BuildMapping, BuildMappingFrom:
+			funcInfo.name = ai.label
+			args, e = fillArgs(funcInfo, ai.args)
+			if e != nil {
+				return nil, e
+			}
+		case ByName:
+			funcInfo.mkf = types.NameMappingKeyFunc
+		case ByTag:
+			if e := setKeyTag(funcInfo, ai.args); e != nil {
+				return nil, e
+			}
+		}
+	}
+
+	// 没有找到函数标记
+	if funcInfo.name == "" {
+		return nil, UnimportantError
+	}
+
+	e = funcInfo.build(args, inputs, outputs, fnDesc)
+	if e != nil {
+		return nil, e
 	}
 
 	return
 }
 
-func (f *funcInfo) buildMapping(args []string, inputs, outputs []*fieldType, file, fnName string) error {
+func MatchFuncLabel(name string) (string, bool) {
+	val, ok := labels[FuncLabel(name)]
+	return val, ok
+}
+
+// build 构建输入输出参数
+func (f *FuncInfo) build(args []string, inputs, outputs []*fieldType, fnDesc *types.Func) (err error) {
+	switch f.name {
+	case BuildMapping: // 第一个参数为输入参数，第二个为输出参数
+		err = f.buildMapping(args, inputs, outputs, fnDesc.File.Name, fnDesc.Name)
+	case BuildMappingFrom: // 全部为输入参数
+		err = f.buildMappingFrom(args, inputs, outputs, fnDesc.File.Name, fnDesc.Name)
+	}
+
+	return
+}
+
+func (f *FuncInfo) buildMapping(args []string, inputs, outputs []*fieldType, file, fnName string) error {
 	// 生成的函数类型为func(a typea, b type b)
 	// 因此输入参数只能为2，输出参数为0
 	if len(inputs) != 2 {
@@ -101,7 +183,7 @@ func (f *funcInfo) buildMapping(args []string, inputs, outputs []*fieldType, fil
 	return nil
 }
 
-func (f *funcInfo) buildMappingFrom(args []string, inputs, outputs []*fieldType, file, fnName string) error {
+func (f *FuncInfo) buildMappingFrom(args []string, inputs, outputs []*fieldType, file, fnName string) error {
 	// 可以有多个输入参数
 	set := make(map[string]struct{})
 	for _, arg := range args {
@@ -124,7 +206,7 @@ func (f *funcInfo) buildMappingFrom(args []string, inputs, outputs []*fieldType,
 	return nil
 }
 
-func (f *funcInfo) checkParam(name string, fts []*fieldType) int {
+func (f *FuncInfo) checkParam(name string, fts []*fieldType) int {
 	return slices.IndexFunc(fts, func(f *fieldType) bool {
 		return f.name == name
 	})
@@ -135,10 +217,10 @@ type FuncDescBuilder struct {
 	sharedTypeManager *TypeManager
 	// 用于存放本包的类型声明
 	typeManager *TypeManager
-	mkf         MappingKeyFunc
+	mkf         types.MappingKeyFunc
 	pkgs        [][2]string
 
-	fli *funcInfo
+	fli *FuncInfo
 
 	typeFilters []TypeFilter
 }
@@ -154,7 +236,7 @@ func StdTimeFilter(absPkg, typeName string) bool {
 	return false
 }
 
-func NewFuncDescBuilder(sharedTypeManager *TypeManager, typeManager *TypeManager, mkf MappingKeyFunc, pkgs [][2]string, fli *funcInfo) *FuncDescBuilder {
+func NewFuncDescBuilder(sharedTypeManager *TypeManager, typeManager *TypeManager, mkf types.MappingKeyFunc, pkgs [][2]string, fli *FuncInfo) *FuncDescBuilder {
 	return &FuncDescBuilder{
 		sharedTypeManager: sharedTypeManager,
 		typeManager:       typeManager,
@@ -167,7 +249,7 @@ func NewFuncDescBuilder(sharedTypeManager *TypeManager, typeManager *TypeManager
 	}
 }
 
-func (f *FuncDescBuilder) Build(fn string) (*Func, error) {
+func (f *FuncDescBuilder) Build(fn string) (*types.Func, error) {
 	switch f.fli.name {
 	case BuildMapping:
 		return f.buildMappingTwoInput(fn)
@@ -178,32 +260,32 @@ func (f *FuncDescBuilder) Build(fn string) (*Func, error) {
 	return nil, fmt.Errorf("invalid func label %s", f.fli.name)
 }
 
-func (f *FuncDescBuilder) buildMappingTwoInput(name string) (*Func, error) {
-	fn := &Func{
+func (f *FuncDescBuilder) buildMappingTwoInput(name string) (*types.Func, error) {
+	fn := &types.Func{
 		Name: name,
 	}
-	if err := f.buildMapping(fn, f.fli.input[0], true, false); err != nil {
+	if err := f.buildKnownStruct(fn, f.fli.input[0], true, false); err != nil {
 		return nil, err
 	}
-	if err := f.buildMapping(fn, f.fli.output[0], false, false); err != nil {
+	if err := f.buildKnownStruct(fn, f.fli.output[0], false, false); err != nil {
 		return nil, err
 	}
 	return fn, nil
 }
 
-func (f *FuncDescBuilder) buildMappingManyToMany(name string) (*Func, error) {
-	fn := &Func{
+func (f *FuncDescBuilder) buildMappingManyToMany(name string) (*types.Func, error) {
+	fn := &types.Func{
 		Name: name,
 	}
 
 	for _, input := range f.fli.input {
-		if err := f.buildMapping(fn, input, true, false); err != nil {
+		if err := f.buildKnownStruct(fn, input, true, false); err != nil {
 			return nil, err
 		}
 	}
 
 	for _, output := range f.fli.output {
-		if err := f.buildMapping(fn, output, false, true); err != nil {
+		if err := f.buildKnownStruct(fn, output, false, true); err != nil {
 			return nil, err
 		}
 	}
@@ -211,25 +293,25 @@ func (f *FuncDescBuilder) buildMappingManyToMany(name string) (*Func, error) {
 	return fn, nil
 }
 
-func (f *FuncDescBuilder) buildMapping(fn *Func, ft *fieldType, isInput, isReturnParam bool) error {
+func (f *FuncDescBuilder) buildKnownStruct(fn *types.Func, ft *fieldType, isInput, isReturnParam bool) error {
 	st, ok := ft.astType.Type.(*ast.StructType)
 	if !ok {
 		return fmt.Errorf("invalid struct type, expected struct")
 	}
-	pam := &Param{
+	pam := &types.Param{
 		Name:          ft.name,
 		TypeName:      ft.astType.Name.Name,
-		Kind:          reflect.Struct,
+		Kind:          types.Struct,
 		Package:       ft.pkg,
 		AbsPackage:    ft.absPkg,
 		IsPointer:     ft.star,
 		IsReturnParam: isReturnParam,
-		Fields:        make(map[string]*Param),
+		Fields:        make(map[string]*types.Param),
 	}
 
 	// 解析每个字段
 	for _, field := range st.Fields.List {
-		parm := &Param{Fields: make(map[string]*Param)}
+		parm := &types.Param{Fields: make(map[string]*types.Param)}
 		fst := field.Type
 	innerloop:
 		for {
@@ -267,10 +349,15 @@ func (f *FuncDescBuilder) buildMapping(fn *Func, ft *fieldType, isInput, isRetur
 			}
 		}
 
-		if parm.Package == "" && isBasicType(parm.TypeName) {
-			parm.Kind = reflectKind(parm.TypeName)
+		if parm.Package == "" && types.IsBasicType(parm.Package, parm.TypeName) {
+			parm.Kind = types.GetKind(parm.Package, parm.TypeName)
 		} else {
 			// 如果不是基础类型，则需要继续解析
+			// 该类型可能与当前类型在同一个包中，需要设置package以进行查询
+			if parm.Package == "" {
+				parm.Package = pam.Package
+				parm.AbsPackage = pam.AbsPackage
+			}
 			if err := f.buildOtherType(parm); err != nil {
 				return err
 			}
@@ -284,6 +371,8 @@ func (f *FuncDescBuilder) buildMapping(fn *Func, ft *fieldType, isInput, isRetur
 			}
 			pp.MappingKey = f.mkf(pp.Name, pp.Tag)
 			pam.Fields[pp.MappingKey] = &pp
+			// 按照字段声明顺序添加
+			pam.FieldNames = append(pam.FieldNames, pp.MappingKey)
 		}
 	}
 
@@ -296,7 +385,14 @@ func (f *FuncDescBuilder) buildMapping(fn *Func, ft *fieldType, isInput, isRetur
 	return nil
 }
 
-func (f *FuncDescBuilder) buildOtherType(param *Param) error {
+func fullTypeName(pkg, name string) string {
+	if pkg == "" {
+		return name
+	}
+	return pkg + "." + name
+}
+
+func (f *FuncDescBuilder) buildOtherType(param *types.Param) error {
 	var (
 		ts     *ast.TypeSpec
 		absPkg string
@@ -309,7 +405,7 @@ func (f *FuncDescBuilder) buildOtherType(param *Param) error {
 		ts, absPkg, err = f.typeManager.GetTypeSpec(param.Package, param.TypeName, f.pkgs)
 	}
 	if err != nil {
-		return fmt.Errorf("find type %s error, err=%v", param.TypeName, err)
+		return fmt.Errorf("find type %s error, err=%v", fullTypeName(param.Package, param.TypeName), err)
 	}
 
 	param.AbsPackage = absPkg
@@ -322,27 +418,27 @@ loop:
 			if param.IsPointer {
 				return fmt.Errorf("pointers of interface types are not supported")
 			}
-			param.Kind = reflect.Interface
+			param.Kind = types.Interface
 			break loop
 		case *ast.Ident:
-			param.PrimitiveType = &Param{TypeName: t.Name}
-			if !isBasicType(t.Name) {
+			param.PrimitiveType = &types.Param{TypeName: t.Name}
+			if !types.IsBasicType("", t.Name) {
 				return f.buildOtherType(param.PrimitiveType)
 			}
-			param.PrimitiveType.Kind = reflectKind(param.TypeName)
+			param.PrimitiveType.Kind = types.GetKind("", param.TypeName)
 			break loop
 		case *ast.StructType:
-			param.Kind = reflect.Struct
+			param.Kind = types.Struct
 			return f.buildStruct(t, param)
 		case *ast.SelectorExpr:
-			param.PrimitiveType = &Param{
+			param.PrimitiveType = &types.Param{
 				TypeName: t.Sel.Name,
 				Package:  t.X.(*ast.Ident).Name,
 			}
-			if !isBasicType(t.Sel.Name) {
+			if !types.IsBasicType(t.X.(*ast.Ident).Name, t.Sel.Name) {
 				return f.buildOtherType(param.PrimitiveType)
 			}
-			param.PrimitiveType.Kind = reflectKind(param.TypeName)
+			param.PrimitiveType.Kind = types.GetKind(t.X.(*ast.Ident).Name, param.TypeName)
 			break loop
 		case *ast.StarExpr:
 			if param.IsPointer {
@@ -369,19 +465,21 @@ loop:
 	return nil
 }
 
-func (f *FuncDescBuilder) buildStruct(st *ast.StructType, param *Param) error {
+func (f *FuncDescBuilder) buildStruct(st *ast.StructType, param *types.Param) error {
+	// 过滤一些特殊的结构体，比如time.Time
 	for _, fn := range f.typeFilters {
 		if fn(param.Package, param.TypeName) {
+			param.Kind = types.GetKind(param.Package, param.TypeName)
 			return nil
 		}
 	}
 	if param.Fields == nil {
-		param.Fields = make(map[string]*Param)
+		param.Fields = make(map[string]*types.Param)
 	}
 
 	// 解析每个字段
 	for _, field := range st.Fields.List {
-		parm := &Param{}
+		parm := &types.Param{}
 		fst := field.Type
 	innerloop:
 		for {
@@ -416,13 +514,13 @@ func (f *FuncDescBuilder) buildStruct(st *ast.StructType, param *Param) error {
 			}
 		}
 
-		if parm.Package != "" || !isBasicType(parm.TypeName) {
+		if parm.Package != "" || !types.IsBasicType(param.Package, parm.TypeName) {
 			// 如果不是基础类型，则需要继续解析
 			if err := f.buildOtherType(parm); err != nil {
 				return err
 			}
 		} else {
-			parm.Kind = reflectKind(parm.TypeName)
+			parm.Kind = types.GetKind(parm.Package, parm.TypeName)
 		}
 
 		for i := 0; i < len(field.Names); i++ {
@@ -433,6 +531,8 @@ func (f *FuncDescBuilder) buildStruct(st *ast.StructType, param *Param) error {
 			}
 			pp.MappingKey = f.mkf(pp.Name, pp.Tag)
 			param.Fields[pp.MappingKey] = &pp
+			// 按照字段声明顺序添加
+			param.FieldNames = append(param.FieldNames, pp.MappingKey)
 		}
 	}
 
