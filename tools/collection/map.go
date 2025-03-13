@@ -1,8 +1,6 @@
 package collection
 
 import (
-	"maps"
-	"slices"
 	"sync"
 	"unsafe"
 )
@@ -172,12 +170,4 @@ func (c *concurrentMap[K, V]) RWLock() *sync.RWMutex {
 
 func (c *concurrentMap[K, V]) InnerMap() map[K]V {
 	return c.m
-}
-
-func Keys[K comparable, V any](m map[K]V) []K {
-	return slices.Collect(maps.Keys(m))
-}
-
-func Values[K comparable, V any](m map[K]V) []V {
-	return slices.Collect(maps.Values(m))
 }

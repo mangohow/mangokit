@@ -2,111 +2,232 @@ package parallel
 
 import (
 	"context"
+	"fmt"
 	"sync"
 )
 
-func Parallel[T any](ctx context.Context, parallel int, tasks []T, taskFn func(task T) error) error {
-	_, err := ParallelResult[T, int](ctx, parallel, tasks, nil, taskFn)
-	return err
+type DoWorkPieceFunc[T any] func(piece int, val T) error
+
+type DoWorkPieceResultFucnc[T, R any] func(piece int, val T) (R, error)
+
+type options struct {
+	chunkSize int
+	stopOnErr bool
 }
 
-// ParallelResult 启动parallel个goroutine并行执行tasks，如果遇到错误则终止执行
-func ParallelResult[T1, T2 any](ctx context.Context, parallel int, tasks []T1, resultCh chan T2, taskFn func(task T1) error) ([]T2, error) {
-	var (
-		wg       = &sync.WaitGroup{}
-		taskCh   = make(chan T1, 128)
-		counter  = make(chan struct{}, 64)
-		errCh    = make(chan error, 1)
-		finished = 0
-		result   = make([]T2, 0)
-		err      error
-	)
-	c, cancel := context.WithCancel(ctx)
+type Options func(*options)
 
-	// 启动一个goroutine来分发任务
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for i := 0; i < len(tasks); i++ {
-			// 防止发生错误时，其它worker退出，导致taskCh被填满，
-			// 从而导致当前goroutine阻塞在taskCh上，造成死锁
-			select {
-			case <-c.Done():
-				return
-			case taskCh <- tasks[i]:
-			}
-		}
-	}()
+// WithChunkSize allows to set chunks of work items to the workers, rather than
+// processing one by one.
+// It is recommended to use this option if the number of pieces significantly
+// higher than the number of workers and the work done for each item is small.
+func WithChunkSize(c int) func(*options) {
+	return func(o *options) {
+		o.chunkSize = c
+	}
+}
 
-	// 启动parallel个goroutine来处理任务
-	wg.Add(parallel)
-	for i := 0; i < parallel; i++ {
+func WithStopOnError(stop bool) func(*options) {
+	return func(o *options) {
+		o.stopOnErr = stop
+	}
+}
+
+// Parallelize is a framework that allows for parallelizing N
+// independent pieces of work until done or the context is canceled.
+func Parallelize[T any](ctx context.Context, workers int, tasks []T, doWorkPiece DoWorkPieceFunc[T], opts ...Options) error {
+	pieces := len(tasks)
+	if pieces == 0 {
+		return nil
+	}
+	o := options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+	chunkSize := o.chunkSize
+	if chunkSize < 1 {
+		chunkSize = 1
+	}
+
+	chunks := ceilDiv(pieces, chunkSize)
+	toProcess := make(chan int, chunks)
+	for i := 0; i < chunks; i++ {
+		toProcess <- i
+	}
+	close(toProcess)
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	stopCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	if chunks < workers {
+		workers = chunks
+	}
+	errCh := make(chan error, 1)
+	wg := sync.WaitGroup{}
+	wg.Add(workers)
+	for i := 0; i < workers; i++ {
 		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+
+				}
+			}()
 			defer wg.Done()
-			for {
-				select {
-				// 退出信号
-				case <-c.Done():
-					return
-				// 从taskCh中获取任务
-				case task := <-taskCh:
-					// 如果发生错误，则投递到errCh中
-					if err := taskFn(task); err != nil {
-						// 防止多个goroutine都阻塞在errCh上
-						select {
-						case errCh <- err:
-						default:
-						}
-						cancel()
+			for chunk := range toProcess {
+				start := chunk * chunkSize
+				end := start + chunkSize
+				if end > pieces {
+					end = pieces
+				}
+				for p := start; p < end; p++ {
+					select {
+					case <-stopCtx.Done():
 						return
+					default:
+						err := doWorkPiece(p, tasks[p])
+						if err != nil && o.stopOnErr {
+							select {
+							case errCh <- err:
+							default:
+							}
+							cancel()
+							return
+						}
 					}
-					// 通知主goroutine任务完成一个
-					counter <- struct{}{}
 				}
 			}
 		}()
 	}
-
-loop:
-	for {
-		select {
-		// 用户退出信号
-		case <-ctx.Done():
-			err = ctx.Err()
-			break loop
-		// 记录任务完成数量，如果任务全部完成，则通知worker退出
-		case <-counter:
-			finished++
-			if finished == len(tasks) {
-				break loop
-			}
-		// 获取发生的错误，并且结束其它worker的后续的执行
-		case err = <-errCh:
-			break loop
-		// 获取结果，保存到切片中
-		case res := <-resultCh:
-			result = append(result, res)
-		}
-	}
-
-	// 通知所有其它goroutine退出
-	cancel()
-
-	// 由于select是随机的，因此可能出现下面的情况：
-	// 在上面for中的select中随机到了counter，结束了循环
-	// 但是结果可能还没有收集完毕，因此在下面再次收集
-sloop:
-	for {
-		select {
-		case res := <-resultCh:
-			result = append(result, res)
-		default:
-			break sloop
-		}
-	}
-
-	// 等待其它goroutine全部退出
 	wg.Wait()
 
-	return result, err
+	select {
+	case err := <-errCh:
+		return err
+	default:
+	}
+
+	return nil
+}
+
+func ParallelizeResult[T, R any](ctx context.Context, workers int, tasks []T, doWorkPiece DoWorkPieceResultFucnc[T, R], opts ...Options) ([]R, error) {
+	pieces := len(tasks)
+	if pieces == 0 {
+		return nil, nil
+	}
+	o := options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+	chunkSize := o.chunkSize
+	if chunkSize < 1 {
+		chunkSize = 1
+	}
+
+	chunks := ceilDiv(pieces, chunkSize)
+	toProcess := make(chan int, chunks)
+	for i := 0; i < chunks; i++ {
+		toProcess <- i
+	}
+	close(toProcess)
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	stopCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	if chunks < workers {
+		workers = chunks
+	}
+	wg := sync.WaitGroup{}
+	result := make([]R, 0, pieces)
+	chSize := pieces
+	if chSize > 1024 {
+		chSize = 1024
+	}
+	errCh := make(chan error, 1)
+	resultCh := make(chan R, chSize)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		for {
+			select {
+			case <-stopCtx.Done():
+				return
+			case r := <-resultCh:
+				result = append(result, r)
+				if len(result) == pieces {
+					return
+				}
+			}
+		}
+	}()
+
+	wg.Add(workers)
+	for i := 0; i < workers; i++ {
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					if !o.stopOnErr {
+						return
+					}
+					var (
+						err error
+						ok  bool
+					)
+					if err, ok = r.(error); !ok {
+						err = fmt.Errorf("recovered panic: %v", r)
+					}
+
+					select {
+					case errCh <- err:
+						cancel()
+					default:
+					}
+				}
+			}()
+			defer wg.Done()
+			for chunk := range toProcess {
+				start := chunk * chunkSize
+				end := start + chunkSize
+				if end > pieces {
+					end = pieces
+				}
+				for p := start; p < end; p++ {
+					select {
+					case <-stopCtx.Done():
+						return
+					default:
+						v, err := doWorkPiece(p, tasks[p])
+						if err != nil && o.stopOnErr {
+							select {
+							case errCh <- err:
+							default:
+							}
+							cancel()
+							return
+						}
+						resultCh <- v
+					}
+				}
+			}
+		}()
+	}
+	wg.Wait()
+
+	select {
+	case err := <-errCh:
+		return nil, err
+	default:
+	}
+
+	return result, nil
+}
+
+func ceilDiv(a, b int) int {
+	return (a + b - 1) / b
 }

@@ -51,3 +51,15 @@ func ForEachP[T any](collection []T, fn func(*T)) {
 		fn(&collection[i])
 	}
 }
+
+type Addable interface {
+	~int | ~int64 | ~int32 | ~int16 | ~int8 | ~uint | ~uint64 | ~uint32 | ~uint16 | ~uint8 | ~float32 | ~float64 | ~uintptr
+}
+
+func Sum[T Addable](args ...T) (res T) {
+	for _, v := range args {
+		res += v
+	}
+
+	return res
+}
