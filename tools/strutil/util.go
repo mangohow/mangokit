@@ -31,3 +31,13 @@ func RandUpperString(length int) string {
 func RandString(length int) string {
 	return RandStringCustom(length, letter)
 }
+
+func CutBefore(s, sep string) (string, bool) {
+	res, _, found := strings.Cut(s, sep)
+	return res, found
+}
+
+func CutAfter(s, sep string) (string, bool) {
+	_, res, found := strings.Cut(s, sep)
+	return res, found
+}

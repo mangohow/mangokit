@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/mangohow/mangokit/cmd/stmapper/internal/generator"
+	"github.com/mangohow/mangokit/cmd/vulcan/internal/generator"
 	"go/ast"
 	"go/build"
 	"go/parser"

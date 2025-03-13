@@ -3,14 +3,15 @@ package parser
 import (
 	"errors"
 	"fmt"
-	"github.com/mangohow/mangokit/cmd/stmapper/internal/log"
-	"github.com/mangohow/mangokit/cmd/stmapper/internal/types"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"io/fs"
 	"path/filepath"
 	"strings"
+
+	"github.com/mangohow/mangokit/cmd/vulcan/internal/log"
+	"github.com/mangohow/mangokit/cmd/vulcan/internal/types"
 )
 
 var UnimportantError = errors.New("unimportant")

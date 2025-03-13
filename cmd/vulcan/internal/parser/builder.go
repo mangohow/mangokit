@@ -2,10 +2,11 @@ package parser
 
 import (
 	"fmt"
-	"github.com/mangohow/mangokit/cmd/stmapper/internal/types"
 	"go/ast"
 	"slices"
 	"strings"
+
+	"github.com/mangohow/mangokit/cmd/vulcan/internal/types"
 )
 
 type FuncLabel string
@@ -19,10 +20,10 @@ const (
 
 var (
 	labels = map[FuncLabel]string{
-		BuildMapping:     "stmapper",
-		BuildMappingFrom: "stmapper",
-		ByName:           "stmapper",
-		ByTag:            "stmapper",
+		BuildMapping:     "vulcan",
+		BuildMappingFrom: "vulcan",
+		ByName:           "vulcan",
+		ByTag:            "vulcan",
 	}
 )
 

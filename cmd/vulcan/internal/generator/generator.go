@@ -3,17 +3,17 @@ package generator
 import (
 	"bytes"
 	"fmt"
-	"github.com/mangohow/mangokit/cmd/stmapper/internal/log"
-	"github.com/mangohow/mangokit/cmd/stmapper/internal/parser"
-	"github.com/mangohow/mangokit/cmd/stmapper/internal/types"
-	"github.com/mangohow/mangokit/iter"
-	"github.com/mangohow/mangokit/tools/collection"
 	"go/ast"
 	"go/format"
 	"go/token"
 	"os"
 	"slices"
 	"strings"
+
+	"github.com/mangohow/mangokit/cmd/vulcan/internal/log"
+	"github.com/mangohow/mangokit/cmd/vulcan/internal/parser"
+	"github.com/mangohow/mangokit/cmd/vulcan/internal/types"
+	"github.com/mangohow/mangokit/tools/collection"
 )
 
 type Config struct {

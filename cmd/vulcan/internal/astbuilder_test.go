@@ -1,10 +1,11 @@
 package internal
 
 import (
-	"github.com/mangohow/mangokit/cmd/stmapper/internal/generator"
 	"go/ast"
 	"go/token"
 	"testing"
+
+	"github.com/mangohow/mangokit/cmd/vulcan/internal/generator"
 )
 
 func TestSelectorExprBuilder(t *testing.T) {

@@ -2,11 +2,12 @@ package generator
 
 import (
 	"fmt"
-	"github.com/mangohow/mangokit/cmd/stmapper/internal/types"
-	"github.com/mangohow/mangokit/tools/strutil"
 	"go/ast"
 	"go/token"
 	"strings"
+
+	"github.com/mangohow/mangokit/cmd/vulcan/internal/types"
+	"github.com/mangohow/mangokit/tools/strutil"
 )
 
 type ConverterFunc func(left, right *types.Param, leftName, rightName []string) (res *ConvertResult, err error)
