@@ -40,16 +40,46 @@ func FilterP[T any](collection []T, fn func(*T) bool) []T {
 	return result
 }
 
-func ForEach[T any](collection []T, fn func(T)) {
+func ForEach[T any](collection []T, fn func(T) bool) {
 	for i := range collection {
-		fn(collection[i])
+		if !fn(collection[i]) {
+			return
+		}
 	}
 }
 
-func ForEachP[T any](collection []T, fn func(*T)) {
+func ForEachP[T any](collection []T, fn func(*T) bool) {
 	for i := range collection {
-		fn(&collection[i])
+		if !fn(&collection[i]) {
+			return
+		}
 	}
+}
+
+func Every[S ~[]T, T any](slice S, f func(T) bool) bool {
+	for _, v := range slice {
+		if !f(v) {
+			return false
+		}
+	}
+	return true
+}
+
+func Some[S ~[]T, T any](slice S, f func(T) bool) bool {
+	for _, v := range slice {
+		if f(v) {
+			return true
+		}
+	}
+	return false
+}
+
+func Reduce[S ~[]T, T, U any](slice S, initial U, f func(U, T) U) U {
+	accumulator := initial
+	for _, v := range slice {
+		accumulator = f(accumulator, v)
+	}
+	return accumulator
 }
 
 type Addable interface {
