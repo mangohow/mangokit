@@ -8,6 +8,15 @@ func NewSet[V comparable]() Set[V] {
 	return &set[V]{set: make(map[V]struct{})}
 }
 
+func NewSetFromSlice[V comparable](s []V) Set[V] {
+	st := &set[V]{set: make(map[V]struct{}, len(s))}
+	for _, v := range s {
+		st.Add(v)
+	}
+
+	return st
+}
+
 func (s *set[V]) Add(v V) {
 	s.set[v] = struct{}{}
 }
