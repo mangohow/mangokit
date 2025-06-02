@@ -1,14 +1,14 @@
 module github.com/mangohow/mangokit
 
-go 1.19
+go 1.20
 
 require (
-	github.com/gin-gonic/gin v1.10.1
-	github.com/go-sql-driver/mysql v1.9.2
+	github.com/gin-gonic/gin v1.10.0
+	github.com/go-sql-driver/mysql v1.8.1
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/sirupsen/logrus v1.9.3
-	golang.org/x/text v0.25.0
-	google.golang.org/protobuf v1.36.6
+	golang.org/x/text v0.22.0
+	google.golang.org/protobuf v1.34.1
 )
 
 require (

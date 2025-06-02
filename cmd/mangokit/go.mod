@@ -1,12 +1,12 @@
 module github.com/mangohow/mangokit/cmd/mangokit
 
-go 1.19
+go 1.20
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/fatih/color v1.16.0
 	github.com/spf13/cobra v1.8.0
-	golang.org/x/text v0.4.0
+	golang.org/x/text v0.22.0
 )
 
 require (
