@@ -1,8 +1,9 @@
 package strutil
 
 import (
-	"math/rand/v2"
+	"math/rand"
 	"strings"
+	"time"
 )
 
 const (
@@ -11,11 +12,15 @@ const (
 	letter      = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 )
 
+func init() {
+	rand.Seed(time.Now().Unix())
+}
+
 func RandStringCustom(length int, letter string) string {
 	builder := strings.Builder{}
 	builder.Grow(length)
 	for i := 0; i < length; i++ {
-		builder.WriteByte(letter[rand.IntN(len(letter))])
+		builder.WriteByte(letter[rand.Intn(len(letter))])
 	}
 	return builder.String()
 }

@@ -96,7 +96,10 @@ func DeleteFunc[T any, S []T](ss S, fn func(T) bool) S {
 		}
 	}
 
-	clear(ss[keepIndex:])
+	var zero T
+	for i := keepIndex; i < len(ss); i++ {
+		ss[i] = zero
+	}
 	ss = ss[:keepIndex]
 
 	return ss

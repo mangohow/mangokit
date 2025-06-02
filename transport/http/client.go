@@ -6,10 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"maps"
 	"net/http"
 	"reflect"
-	"slices"
 	"strconv"
 	"strings"
 )
@@ -184,10 +182,11 @@ func encodeQuery(obj interface{}, builder *strings.Builder, expect map[string]st
 	reflectGetValues(m, obj, FormKey)
 	// 如果一个字段既添加了param tag 又添加了form tag，则需要忽略form tag，因为已经在param参数中进行了设置
 	if expect != nil {
-		maps.DeleteFunc(m, func(k string, v string) bool {
-			_, ok := expect[k]
-			return ok
-		})
+		for k := range m {
+			if _, ok := expect[k]; ok {
+				delete(m, k)
+			}
+		}
 	}
 	if len(m) == 0 {
 		return
@@ -202,7 +201,7 @@ func encodeQuery(obj interface{}, builder *strings.Builder, expect map[string]st
 
 func encodeParam(pattern string, obj interface{}, builder *strings.Builder, m map[string]string) {
 	paramPatterns := strings.Split(pattern, "/:")
-	paramPatterns = slices.DeleteFunc(paramPatterns, func(s string) bool { return s == "" })
+	paramPatterns = removeEmptyStringsInPlace(paramPatterns)
 	if len(paramPatterns) == 0 {
 		return
 	}
@@ -219,6 +218,17 @@ func encodeParam(pattern string, obj interface{}, builder *strings.Builder, m ma
 			builder.WriteString(v)
 		}
 	}
+}
+
+func removeEmptyStringsInPlace(slice []string) []string {
+	n := 0
+	for _, str := range slice {
+		if str != "" {
+			slice[n] = str
+			n++
+		}
+	}
+	return slice[:n]
 }
 
 func reflectGetValues(m map[string]string, obj interface{}, tagK string) {

@@ -2,6 +2,7 @@ package time
 
 import (
 	"container/list"
+	"github.com/mangohow/mangokit/tools/math"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -223,7 +224,7 @@ func (t *TimerWheel) tick() {
 		du := time.Since(now)
 		t.totalUseTime.Add(int64(du))
 		t.tickTimes.Add(1)
-		t.longestUseTime.Store(max(t.longestUseTime.Load(), int64(du)))
+		t.longestUseTime.Store(math.Max(t.longestUseTime.Load(), int64(du)))
 	}()
 
 	s := t.slots[t.sp]
@@ -232,7 +233,7 @@ func (t *TimerWheel) tick() {
 	if s.timers.Len() == 0 {
 		return
 	}
-	t.longestListLen.Store(max(t.longestListLen.Load(), int64(s.timers.Len())))
+	t.longestListLen.Store(math.Max(t.longestListLen.Load(), int64(s.timers.Len())))
 
 	for e := s.timers.Front(); e != nil; {
 		tm := e.Value.(*tw)

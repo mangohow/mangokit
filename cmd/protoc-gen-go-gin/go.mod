@@ -1,6 +1,6 @@
 module github.com/mangohow/mangohowkit/cmd/protoc-gen-go-gin
 
-go 1.21.0
+go 1.19
 
 require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20231212172506-995d672761c0
